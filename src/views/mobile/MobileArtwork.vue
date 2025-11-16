@@ -8,11 +8,6 @@
         </svg>
       </button>
       <h1 class="header-title">{{ artworkInfo.title || '作品详情' }}</h1>
-      <button class="share-btn" @click="handleShare">
-        <svg viewBox="0 0 24 24">
-          <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>
-        </svg>
-      </button>
     </header>
 
     <!-- 内容区域 - 垂直瀑布流 -->
@@ -468,14 +463,6 @@ const handleCollection = () => {
   collected.value = !collected.value
 }
 
-// 分享
-const handleShare = () => {
-  const url = window.location.href
-  navigator.clipboard.writeText(url).then(() => {
-    alert('链接已复制到剪贴板')
-  })
-}
-
 // 下载
 const handleDownload = () => {
   artworkImages.value.forEach((image, index) => {
@@ -569,8 +556,7 @@ watch(() => route.params.id, () => {
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-.back-btn,
-.share-btn {
+.back-btn {
   width: 40px;
   height: 40px;
   border: none;
@@ -583,24 +569,20 @@ watch(() => route.params.id, () => {
   border-radius: 50%;
 }
 
-.back-btn:active,
-.share-btn:active {
+.back-btn:active {
   background: rgba(255, 255, 255, 0.1);
 }
 
-.back-btn svg,
-.share-btn svg {
+.back-btn svg {
   width: 24px;
   height: 24px;
 }
 
-.dark-theme .back-btn svg,
-.dark-theme .share-btn svg {
+.dark-theme .back-btn svg {
   fill: white;
 }
 
-.light-theme .back-btn svg,
-.light-theme .share-btn svg {
+.light-theme .back-btn svg {
   fill: #333;
 }
 

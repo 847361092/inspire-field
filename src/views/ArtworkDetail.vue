@@ -78,12 +78,12 @@
           <!-- 面板标题栏（可点击展开/收起） -->
           <div class="panel-header" @click="toggleInfoPanel">
             <h1 class="panel-title">{{ artworkInfo.title }}</h1>
-            <span class="toggle-icon">{{ isInfoExpanded ? '↑' : '↓' }}</span>
+            <span class="toggle-icon" :class="{ 'rotated': isInfoExpanded }">↓</span>
           </div>
 
           <!-- 可折叠的内容区 -->
           <Transition name="collapse">
-            <div v-show="isInfoExpanded" class="panel-content-wrapper">
+            <div v-if="isInfoExpanded" class="panel-content-wrapper">
               <!-- 作品信息内容 -->
               <div class="info-scroll-container">
                 <div class="info-content" v-html="markdownContent"></div>
@@ -1113,6 +1113,12 @@ onUnmounted(() => {
   transition: transform var(--duration-fast);
   flex-shrink: 0;
   margin-left: var(--space-3);
+  display: inline-block;
+  transform: rotate(0deg);
+}
+
+.toggle-icon.rotated {
+  transform: rotate(180deg);
 }
 
 /* 可折叠内容包装器 */

@@ -142,41 +142,155 @@ Vite开发服务器配置了代理，用于本地开发时连接后端API：
 
 ## 评论系统集成
 
-项目已集成 [Twikoo](https://twikoo.js.org/) 评论系统：
+项目已集成 [Twikoo](https://twikoo.js.org/) 评论系统，支持完整的评论功能和管理后台。
 
-### 部署方式
+### 部署架构
 
-1. **本地测试（Docker）**：
-```bash
-# 启动 MongoDB + Twikoo
-docker-compose up -d
-
-# 访问地址：http://localhost:8080
-# 管理面板：http://localhost:8080/admin
+```
+前端（Vue 3）
+    ↓
+Twikoo 脚本（twikoo.all.min.js）
+    ↓
+Vercel 云函数（Twikoo 后端）
+    ↓
+MongoDB Atlas（评论数据库）
 ```
 
-2. **Vercel 部署**：
-- 使用 Vercel 模板一键部署
-- 配置 MongoDB Atlas 数据库
-- 获取 Twikoo 服务 URL
+### 环境变量配置
+
+**本地开发环境 (`.env`)**：
+```env
+VITE_TWIKOO_ENV_ID=https://twiko-rose.vercel.app
+```
+
+**生产环境 (`.env.production`)**：
+```env
+VITE_API_URL=/api
+VITE_USE_STATIC_DATA=false
+VITE_TWIKOO_ENV_ID=https://twiko-rose.vercel.app
+```
+
+### Vercel 环境变量配置
+
+在 Vercel 项目 Settings → Environment Variables 中添加：
+
+```
+MONGODB_URI=mongodb+srv://用户名:密码@cluster.mongodb.net/twikoo
+```
+
+**注意**：`TWIKOO_SECRET` 不是官方标准变量，已删除。管理员密码通过管理面板设置，存储在 MongoDB。
+
+### 访问管理面板
+
+#### 方式一：内嵌管理面板（推荐）
+
+管理面板**内嵌在评论组件中**，通过小齿轮图标访问：
+
+1. **打开包含评论的页面**
+   ```
+   http://localhost:5173/artwork/[作品ID]
+   ```
+
+2. **点击评论按钮**打开评论弹窗
+
+3. **查找小齿轮图标 ⚙️**
+   - 位置：评论区标题栏右上角
+   - 如果看不到，可能设置了暗号（见下文）
+
+4. **点击小齿轮图标**进入管理面板
+
+#### 如果小齿轮图标被隐藏
+
+若设置了 `HIDE_ADMIN_CRYPT` 暗号，按以下方式显示图标：
+
+1. **在昵称输入框输入暗号**（通常为管理员自设）
+2. **小齿轮图标会出现**
+3. **点击图标进入管理面板**
+
+#### 调试技巧
+
+在浏览器控制台运行以下代码查看配置：
+
+```javascript
+fetch('https://twiko-rose.vercel.app/', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ event: 'GET_CONFIG' })
+})
+.then(r => r.json())
+.then(d => {
+  console.log('Twikoo 配置:', d.config)
+  if (d.config.HIDE_ADMIN_CRYPT) {
+    console.log('暗号:', d.config.HIDE_ADMIN_CRYPT)
+  }
+})
+```
+
+### 管理面板功能
+
+登录后可进行以下操作：
+
+- **📝 评论管理**：查看、编辑、删除评论
+- **⚙️ 配置管理**：设置评论系统参数
+  - 显示/隐藏表情包
+  - 配置高亮主题
+  - 设置管理员暗号
+- **📥 导入数据**：导入评论数据
+- **📤 导出数据**：导出评论数据
+
+### 密码管理
+
+- **首次访问**：输入密码进行初始化
+- **忘记密码**：直接输入新密码（会覆盖旧密码）
+- **密码存储**：MD5 加密存储在 MongoDB `config` 表的 `ADMIN_PASS` 字段
 
 ### 配置文件
 
-- `.env` - 环境变量配置（参考 `.env.example`）
-- `docker-compose.yml` - Docker 编排文件
-- `init-mongo.js` - MongoDB 初始化脚本
+- `.env` - 开发环境变量
+- `.env.production` - 生产环境变量
+- `docker-compose.yml` - Docker 编排（本地测试用）
+- `init-mongo.js` - MongoDB 初始化脚本（本地测试用）
 
-### 评论组件
+### 核心代码位置
 
-- `src/components/comments/CommentModal.vue` - 评论弹窗组件
-- `src/components/comments/CommentButton.vue` - 评论按钮组件
-- `src/composables/useTwikoo.ts` - Twikoo 集成逻辑
+- `src/components/comments/CommentModal.vue` - 评论弹窗（包含管理面板触发）
+- `src/components/comments/CommentButton.vue` - 评论按钮
+- `src/composables/useTwikoo.ts` - Twikoo 初始化和配置
+- `src/types/twikoo.d.ts` - TypeScript 类型定义
+
+## 本地开发快速开始
+
+### 启动开发环境
+
+需要在两个终端分别启动两个服务：
+
+**终端 1 - 启动图片服务器**：
+```bash
+node server/upload.cjs
+# 输出：✨ 图片服务器已启动: http://localhost:3001
+```
+
+**终端 2 - 启动前端开发服务器**：
+```bash
+npm run dev
+# 输出：➜  Local: http://localhost:5173/
+```
+
+### Windows 快速启动（可选）
+
+创建 `dev-start.bat` 文件：
+```batch
+@echo off
+start "图片服务器" node server/upload.cjs
+start "前端服务器" npm run dev
+```
+然后双击 `dev-start.bat` 同时启动两个服务。
 
 ## 重要提醒
 
 1. **中文对话**: 请使用中文与用户交流
 2. **静态内容**: 所有作品通过文件系统管理，无需数据库
 3. **Git工作流**: 内容更新通过Git提交触发自动部署
-4. **开发环境**: 本地开发时可启动后端API（端口3001）
+4. **开发环境**: 本地开发需启动两个服务（图片服务器 + 前端服务器）
 5. **图片管理**: 使用提供的工具批量转换和管理图片
-6. **评论系统**: 需要 MongoDB 数据库支持，可使用本地 Docker 或 Vercel 部署
+6. **评论系统**: 完全托管于 Vercel + MongoDB Atlas，无需本地配置
