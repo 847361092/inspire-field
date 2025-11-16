@@ -1,0 +1,177 @@
+/* 移动端样式覆盖 - 确保移动端正确显示 */
+
+/* 移动端强制白色主题 - 仅针对真正的移动设备 */
+@media (max-width: 768px) and (pointer: coarse), 
+       (max-width: 768px) and (hover: none) {
+  
+  /* 强制文字颜色为黑色 */
+  .mobile-device *,
+  [data-theme="light"] * {
+    --color-text-primary: #0A0A0A !important;
+    --color-text-secondary: #404040 !important;
+    --color-text-tertiary: #A3A3A3 !important;
+  }
+  
+  /* 确保标题文字颜色正确 */
+  .section-title,
+  .section-title span,
+  .title-text,
+  h1, h2, h3, h4, h5, h6 {
+    color: #0A0A0A !important;
+  }
+  
+  /* 隐藏顶部栏 */
+  .app-header {
+    display: none !important;
+  }
+  
+  /* 隐藏主题切换按钮 */
+  .theme-switch,
+  .theme-toggle,
+  .theme-btn {
+    display: none !important;
+  }
+  
+  /* 移动端主内容区域 */
+  .main-content {
+    padding-top: 0 !important;
+  }
+  
+  /* 修复精选推荐标题 */
+  .horizontal-scroll-section .section-title {
+    color: #0A0A0A !important;
+  }
+  
+  .horizontal-scroll-section .title-text {
+    color: #0A0A0A !important;
+  }
+  
+  /* 修复发现精选作品标题 */
+  .gallery-section .section-title {
+    color: #0A0A0A !important;
+  }
+  
+  .gallery-section .split-text {
+    color: #0A0A0A !important;
+  }
+  
+  /* 移动端禁用复杂动画和变换 */
+  .mobile-device *,
+  .mobile-device *:before,
+  .mobile-device *:after {
+    animation: none !important;
+    transition: opacity 0.2s ease !important;
+    transform: none !important;
+  }
+  
+  /* 禁用所有:hover效果 */
+  .mobile-device *:hover {
+    transform: none !important;
+    scale: none !important;
+  }
+  
+  /* 禁用anime.js动画 */
+  .mobile-device .artwork-card,
+  .mobile-device .scroll-item,
+  .mobile-device .action-btn,
+  .mobile-device .nav-btn {
+    animation: none !important;
+    transform: none !important;
+  }
+  
+  /* 移动端性能优化 */
+  .mobile-device .noise-overlay {
+    display: none !important;
+  }
+  
+  /* 移动端禁用毛玻璃效果 */
+  .mobile-device * {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  
+  /* 移动端简化阴影 */
+  .mobile-device * {
+    box-shadow: none !important;
+  }
+  
+  /* 移动端禁用视差效果 */
+  .mobile-device [data-parallax] {
+    transform: none !important;
+  }
+  
+  /* 移动端卡片简化样式 */
+  .mobile-device .artwork-card {
+    transition: opacity 0.2s ease !important;
+  }
+  
+  .mobile-device .artwork-card:hover {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+  
+  .mobile-device .artwork-card:active {
+    opacity: 0.8 !important;
+    transform: none !important;
+  }
+  
+  /* 移动端按钮简化 */
+  .mobile-device .action-btn:hover,
+  .mobile-device .action-btn:active {
+    transform: none !important;
+    scale: none !important;
+  }
+  
+  /* 移动端导航按钮 */
+  .mobile-device .glass-nav-btn:hover,
+  .mobile-device .glass-nav-btn:active {
+    transform: translateY(-50%) !important; /* 保持垂直居中 */
+    scale: none !important;
+  }
+  
+  /* 禁用图片缩放效果 */
+  .mobile-device .artwork-image {
+    transition: none !important;
+  }
+  
+  .mobile-device .artwork-card:hover .artwork-image {
+    transform: none !important;
+  }
+  
+  /* 禁用粒子动画 */
+  .mobile-device .heart-particle {
+    display: none !important;
+  }
+  
+  /* 移动端卡片初始化可见 */
+  .mobile-device .artwork-card,
+  .mobile-device .scroll-item {
+    opacity: 1 !important;
+  }
+  
+  /* 禁用所有JS动画库 */
+  .mobile-device [data-anime] {
+    animation: none !important;
+  }
+}
+
+/* 高分辨率手机特殊处理 - 仅针对真正的移动设备 */
+@media (max-width: 768px) and (min-height: 2000px) and (orientation: portrait) and (pointer: coarse) {
+  /* 强制白色主题 */
+  :root {
+    --color-bg-primary: #FFFFFF !important;
+    --color-bg-secondary: #FAFAFA !important;
+    --color-text-primary: #0A0A0A !important;
+    --color-text-secondary: #404040 !important;
+  }
+  
+  /* 隐藏顶部栏 */
+  .app-header {
+    display: none !important;
+  }
+  
+  /* 确保文字可见 */
+  * {
+    color: var(--color-text-primary) !important;
+  }
+}

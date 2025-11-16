@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  # MongoDB 数据库
+  mongodb:
+    image: mongo:7.0
+    container_name: twikoo-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: twikoo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+
+  # Twikoo 评论系统
+  twikoo:
+    image: imaegoo/twikoo:latest
+    container_name: twikoo-server
+    restart: unless-stopped
+    environment:
+      # MongoDB 连接
+      MONGO_URI: mongodb://admin:password123@mongodb:27017/twikoo
+      # 服务端口
+      TWIKOO_PORT: 8080
+      # 管理员密码（可选）
+      TWIKOO_SECRET: your-secret-key
+      # 其他配置
+      TWIKOO_IP: 0.0.0.0
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mongodb
+    volumes:
+      - twikoo_data:/app/data
+
+volumes:
+  mongodb_data:
+    driver: local
+  twikoo_data:
+    driver: local

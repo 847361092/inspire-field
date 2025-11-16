@@ -1,0 +1,17 @@
+/* Dark Theme - Default */
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+/* Dark theme specific styles */
+[data-theme="dark"] .noise-overlay {
+  opacity: 0.03;
+}
+
+[data-theme="dark"] .artwork-card {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .artwork-card:hover {
+  box-shadow: 0 20px 60px rgba(79, 70, 229, 0.2);
+}

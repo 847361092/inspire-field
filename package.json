@@ -1,0 +1,54 @@
+{
+  "name": "inspire-field",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "run-p type-check \"build-only {@}\" --",
+    "preview": "vite preview",
+    "build-only": "vite build",
+    "type-check": "vue-tsc --build",
+    "artwork": "node artwork-manager.cjs",
+    "artwork:create": "node artwork-manager.cjs create",
+    "artwork:list": "node artwork-manager.cjs list",
+    "artwork:update": "node artwork-manager.cjs update",
+    "artwork:delete": "node artwork-manager.cjs delete",
+    "convert-webp": "node convert-to-webp.cjs"
+  },
+  "dependencies": {
+    "@types/marked": "^5.0.2",
+    "@vercel/blob": "^1.1.1",
+    "@vueuse/core": "^13.6.0",
+    "animejs": "^4.1.2",
+    "axios": "^1.6.2",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "formidable": "^3.5.4",
+    "gsap": "^3.13.0",
+    "lenis": "^1.3.8",
+    "marked": "^16.1.2",
+    "mongodb": "^4.17.2",
+    "multer": "^1.4.5-lts.1",
+    "pinia": "^3.0.3",
+    "sharp": "^0.34.3",
+    "vue": "^3.5.18",
+    "vue-router": "^4.5.1"
+  },
+  "devDependencies": {
+    "@tsconfig/node22": "^22.0.2",
+    "@types/node": "^22.16.5",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "@vitejs/plugin-vue-jsx": "^5.0.1",
+    "@vue/tsconfig": "^0.7.0",
+    "npm-run-all2": "^8.0.4",
+    "puppeteer": "^24.16.0",
+    "typescript": "~5.8.0",
+    "vite": "^7.0.6",
+    "vite-plugin-vue-devtools": "^8.0.0",
+    "vue-tsc": "^3.0.4"
+  }
+}

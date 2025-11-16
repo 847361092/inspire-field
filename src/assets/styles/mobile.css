@@ -1,0 +1,262 @@
+/* 移动端专用样式 */
+
+/* CSS变量覆盖 */
+@media (max-width: 768px) {
+  :root {
+    /* 字体大小调整 */
+    --font-size-xs: 12px;
+    --font-size-sm: 14px;
+    --font-size-base: 16px;
+    --font-size-lg: 18px;
+    --font-size-xl: 20px;
+    --font-size-2xl: 24px;
+    --font-size-3xl: 28px;
+    
+    /* 间距调整 */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 12px;
+    --spacing-lg: 16px;
+    --spacing-xl: 20px;
+    --spacing-2xl: 24px;
+    
+    /* 圆角调整 */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --radius-full: 9999px;
+    
+    /* 安全区域 */
+    --safe-area-top: env(safe-area-inset-top);
+    --safe-area-bottom: env(safe-area-inset-bottom);
+    --safe-area-left: env(safe-area-inset-left);
+    --safe-area-right: env(safe-area-inset-right);
+  }
+}
+
+/* 移动端全局样式 */
+@media (max-width: 768px) {
+  /* 禁用PC端的hover效果 */
+  @media (hover: hover) {
+    *:hover {
+      transition: none !important;
+    }
+  }
+  
+  /* 优化触摸体验 */
+  * {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    touch-action: manipulation;
+  }
+  
+  /* 优化滚动性能 */
+  .mobile-scroll {
+    -webkit-overflow-scrolling: touch;
+    overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  
+  /* 按钮点击反馈 */
+  button,
+  .clickable {
+    position: relative;
+    transition: transform 0.1s ease;
+  }
+  
+  button:active,
+  .clickable:active {
+    transform: scale(0.95);
+  }
+  
+  /* 输入框优化 */
+  input,
+  textarea {
+    font-size: 16px !important; /* 防止iOS自动缩放 */
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  
+  /* 隐藏滚动条 */
+  .hide-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* 防止横向滚动 */
+  body {
+    overflow-x: hidden;
+    width: 100%;
+  }
+  
+  /* 固定定位优化 */
+  .fixed-top {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding-top: var(--safe-area-top);
+  }
+  
+  .fixed-bottom {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding-bottom: var(--safe-area-bottom);
+  }
+}
+
+/* 特定分辨率优化 - 1080x2408 */
+@media (width: 1080px) and (height: 2408px),
+       (device-width: 1080px) and (device-height: 2408px) {
+  :root {
+    --font-size-base: 18px;
+    --font-size-lg: 20px;
+    --font-size-xl: 24px;
+    --font-size-2xl: 28px;
+    --font-size-3xl: 32px;
+    
+    --spacing-md: 16px;
+    --spacing-lg: 20px;
+    --spacing-xl: 24px;
+    --spacing-2xl: 32px;
+  }
+  
+  /* 调整触摸目标大小 */
+  button,
+  .touchable {
+    min-height: 48px;
+    min-width: 48px;
+  }
+  
+  /* 优化网格布局 */
+  .mobile-grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+  
+  /* 调整卡片大小 */
+  .mobile-card {
+    min-height: 200px;
+  }
+}
+
+/* iPhone X及以上机型适配 */
+@supports (padding: max(0px)) {
+  .safe-area-padding {
+    padding-top: max(20px, env(safe-area-inset-top));
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+}
+
+/* 横屏模式 */
+@media (max-width: 768px) and (orientation: landscape) {
+  .mobile-home .featured-section {
+    display: none; /* 横屏时隐藏轮播 */
+  }
+  
+  .mobile-home .gallery-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* 动画性能优化 */
+@media (max-width: 768px) {
+  /* 使用GPU加速 */
+  .gpu-accelerated {
+    transform: translateZ(0);
+    will-change: transform;
+  }
+  
+  /* 简化动画 */
+  .mobile-transition {
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+  
+  /* 禁用复杂动画 */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* 加载状态 */
+.mobile-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+.mobile-loading::after {
+  content: '';
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 错误状态 */
+.mobile-error {
+  text-align: center;
+  padding: 40px 20px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.mobile-error-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.mobile-error-message {
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+/* Pull to Refresh */
+.pull-to-refresh {
+  position: relative;
+  overflow: hidden;
+}
+
+.pull-indicator {
+  position: absolute;
+  top: -50px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 40px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: top 0.3s;
+}
+
+.pull-indicator.pulling {
+  top: 20px;
+}
+
+.pull-indicator.refreshing {
+  top: 20px;
+  animation: spin 1s linear infinite;
+}

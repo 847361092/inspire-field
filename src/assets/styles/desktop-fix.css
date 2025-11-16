@@ -1,0 +1,80 @@
+/* 桌面端修复样式 - 针对1920x1080等标准分辨率优化 */
+
+/* 确保FHD分辨率下头部栏始终显示 */
+@media (min-width: 1024px) {
+  .app-header {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+  
+  /* 主题切换按钮在桌面端始终可见 */
+  .theme-switch {
+    display: flex !important;
+    visibility: visible !important;
+  }
+  
+  /* 确保主内容区域有正确的顶部边距 */
+  .main-content {
+    padding-top: 72px !important;
+  }
+}
+
+/* 1920x1080 特定优化 */
+@media (width: 1920px) and (height: 1080px) {
+  .app-header {
+    position: fixed !important;
+    top: 0 !important;
+    transform: translateY(0) !important;
+  }
+}
+
+/* 全屏模式特殊处理 */
+@media all and (display-mode: fullscreen) {
+  .app-header {
+    position: fixed !important;
+    top: 0 !important;
+    transform: translateY(0) !important;
+    z-index: 9999 !important;
+  }
+}
+
+/* 修复主题切换按钮指示器精确对齐 */
+.theme-switch {
+  position: relative;
+}
+
+.theme-switch .theme-indicator {
+  /* 确保指示器精确居中 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 防止误判为移动设备 */
+@media (min-width: 1280px) and (pointer: fine) {
+  /* 确保不应用移动端样式 */
+  .mobile-only {
+    display: none !important;
+  }
+  
+  .desktop-only {
+    display: flex !important;
+  }
+  
+  /* 确保顶部栏不被隐藏 */
+  .app-header {
+    display: flex !important;
+  }
+}
+
+/* 修复浏览器全屏API兼容性 */
+:-webkit-full-screen .app-header,
+:-moz-full-screen .app-header,
+:-ms-fullscreen .app-header,
+:fullscreen .app-header {
+  position: fixed !important;
+  top: 0 !important;
+  transform: translateY(0) !important;
+  visibility: visible !important;
+}
