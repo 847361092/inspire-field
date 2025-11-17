@@ -183,21 +183,22 @@ function generateMockArtworks() {
   const mockArtworks = [];
 
   // 生成18个作品，与本地数据对应
+  // 正确的分类：mecha(001,004,007,010,013,016)、concept(002,005,008,011,014,017)、illustration(003,006,009,012,015,018)
   const works = [
     { name: '作品001', category: 'mecha' },
-    { name: '作品002', category: 'mecha' },
-    { name: '作品003', category: 'mecha' },
-    { name: '作品004', category: 'concept' },
+    { name: '作品002', category: 'concept' },
+    { name: '作品003', category: 'illustration' },
+    { name: '作品004', category: 'mecha' },
     { name: '作品005', category: 'concept' },
-    { name: '作品006', category: 'concept' },
-    { name: '作品007', category: 'illustration' },
-    { name: '作品008', category: 'illustration' },
+    { name: '作品006', category: 'illustration' },
+    { name: '作品007', category: 'mecha' },
+    { name: '作品008', category: 'concept' },
     { name: '作品009', category: 'illustration' },
     { name: '作品010', category: 'mecha' },
-    { name: '作品011', category: 'mecha' },
-    { name: '作品012', category: 'concept' },
-    { name: '作品013', category: 'concept' },
-    { name: '作品014', category: 'illustration' },
+    { name: '作品011', category: 'concept' },
+    { name: '作品012', category: 'illustration' },
+    { name: '作品013', category: 'mecha' },
+    { name: '作品014', category: 'concept' },
     { name: '作品015', category: 'illustration' },
     { name: '作品016', category: 'mecha' },
     { name: '作品017', category: 'concept' },
