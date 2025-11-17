@@ -210,7 +210,7 @@ function generateMockArtworks() {
 
     // 生成图片路径（需要与实际部署路径匹配）
     for (let i = 1; i <= imageCount; i++) {
-      images.push(`/artworks/${work.category}/${encodeURIComponent(work.name)}/image_${i}.webp`);
+      images.push(`/artworks/${work.category}/${work.name}/image_${i}.webp`);
     }
 
     mockArtworks.push({
@@ -220,7 +220,7 @@ function generateMockArtworks() {
       category: work.category,
       authorName: `设计师${index + 1}`,
       authorEmail: `designer${index + 1}@example.com`,
-      authorAvatar: `/artworks/${work.category}/${encodeURIComponent(work.name)}/author.jpg`,
+      authorAvatar: `/artworks/${work.category}/${work.name}/author.jpg`,
       images: images,
       thumbnail: images[0], // 第一张图作为缩略图
       createdAt: new Date(Date.now() - index * 86400000).toISOString(),
