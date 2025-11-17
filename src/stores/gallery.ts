@@ -446,10 +446,10 @@ export const useGalleryStore = defineStore('gallery', () => {
         ...formData.images,
         formData.markdownFile,
         formData.authorAvatar
-      ].filter(Boolean)
+      ].filter(Boolean) as (File | Blob)[]
 
       await Promise.all(
-        filesToUpload.map(async (file, index) => {
+        filesToUpload.map(async (file: File | Blob, index: number) => {
           const { blobPath } = uploadUrls[index]
           await upload(blobPath, file, {
             access: 'public',

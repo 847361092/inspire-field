@@ -1,4 +1,5 @@
 import { fileURLToPath, URL } from 'node:url'
+import type { ViteDevServer } from 'vite'
 
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
@@ -9,10 +10,10 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 const mockApiMiddleware = () => {
   return {
     name: 'mock-api',
-    apply: 'serve',
-    configureServer(server) {
+    apply: 'serve' as const,
+    configureServer(server: ViteDevServer) {
       return () => {
-        server.middlewares.use((req, res, next) => {
+        server.middlewares.use((req: any, res: any, next: any) => {
           // 处理 /api/artworks 请求
           if (req.url?.startsWith('/api/artworks') && req.method === 'GET') {
             res.setHeader('Content-Type', 'application/json')
