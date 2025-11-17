@@ -122,6 +122,15 @@
             :comment-count="commentCount"
             @click="openCommentModal"
           />
+          <button
+            class="action-btn delete-btn"
+            :class="{ 'confirm': showDeleteConfirm }"
+            @click="handleDelete"
+            :disabled="isDeleting"
+          >
+            <span class="icon">🗑️</span>
+            <span>{{ showDeleteConfirm ? '确认删除？' : '删除' }}</span>
+          </button>
         </div>
       </div>
     </div>
@@ -273,6 +282,10 @@ const drawerContent = ref<HTMLElement>()
 const showCommentModal = ref(false)
 const commentCount = ref(0)
 
+// 删除相关状态
+const showDeleteConfirm = ref(false)
+const isDeleting = ref(false)
+
 // 折叠面板状态
 const isInfoExpanded = ref(false) // 默认收起
 
@@ -314,10 +327,8 @@ const loadArtworkData = async () => {
   // 先尝试从API获取动态作品数据
   try {
     console.log('尝试从API获取作品:', artworkId, workName)
-    // 判断环境并使用正确的API地址
-    const apiUrl = import.meta.env.PROD 
-      ? '/api/artworks'  // 生产环境
-      : 'http://localhost:3001/api/artworks'  // 开发环境
+    // 使用相对路径，Vite会自动代理到生产API
+    const apiUrl = '/api/artworks'
     const response = await fetch(apiUrl)
     if (response.ok) {
       const data = await response.json()
@@ -328,19 +339,17 @@ const loadArtworkData = async () => {
         
         if (artwork) {
           console.log('找到API作品:', artwork)
-          // 使用服务器返回的图片路径，开发环境需要添加完整URL
-          artworkImages.value = artwork.images.map((img: string) => 
-            import.meta.env.PROD ? img : `http://localhost:3001${img}`
-          )
+          // 使用服务器返回的图片路径
+          artworkImages.value = artwork.images.map((img: string) => img)
           artworkInfo.value.title = artwork.title
           artworkInfo.value.category = artwork.category
-          
+
           // 使用API返回的作者信息
           if (artwork.authorName) {
             artworkInfo.value.author = artwork.authorName
           }
           if (artwork.authorAvatar) {
-            authorAvatar.value = import.meta.env.PROD ? artwork.authorAvatar : `http://localhost:3001${artwork.authorAvatar}`
+            authorAvatar.value = artwork.authorAvatar
           }
           
           // 加载MD文件 - 支持多种文件名格式
@@ -354,10 +363,8 @@ const loadArtworkData = async () => {
             
             let mdLoaded = false
             for (const mdFileName of possibleMdFiles) {
-              const mdUrl = import.meta.env.PROD 
-                ? `/artworks/${artwork.category}/${encodeURIComponent(workName)}/${mdFileName}`
-                : `http://localhost:3001/artworks/${artwork.category}/${encodeURIComponent(workName)}/${mdFileName}`
-              
+              const mdUrl = `/artworks/${artwork.category}/${encodeURIComponent(workName)}/${mdFileName}`
+
               console.log('尝试加载MD文件:', mdUrl)
               
               try {
@@ -426,16 +433,13 @@ const loadArtworkData = async () => {
   }
   
   const maxImages = imageCount[workName] || 5
-  
-  // 开发环境需要添加完整的后端URL
-  const imagePrefix = import.meta.env.PROD ? '' : 'http://localhost:3001'
-  
+
   for (let i = 1; i <= maxImages; i++) {
-    images.push(`${imagePrefix}${basePath}image_${i}.webp`)
+    images.push(`${basePath}image_${i}.webp`)
   }
-  
+
   artworkImages.value = images.length > 0 ? images : [
-    `${imagePrefix}${basePath}image_1.webp`
+    `${basePath}image_1.webp`
   ]
   
   // 加载Markdown文档 - 支持多种文件名格式
@@ -449,10 +453,8 @@ const loadArtworkData = async () => {
     
     let mdLoaded = false
     for (const mdFileName of possibleMdFiles) {
-      const mdUrl = import.meta.env.PROD 
-        ? `${basePath}${mdFileName}`
-        : `http://localhost:3001${basePath}${mdFileName}`
-      
+      const mdUrl = `${basePath}${mdFileName}`
+
       console.log('尝试加载MD文件(静态):', mdUrl)
       
       try {
@@ -607,6 +609,40 @@ const handleDownload = () => {
   })
 }
 
+// 删除作品
+const handleDelete = async () => {
+  if (!showDeleteConfirm.value) {
+    showDeleteConfirm.value = true
+    return
+  }
+
+  if (isDeleting.value) return
+
+  isDeleting.value = true
+  try {
+    // 调用 store 的删除方法
+    const galleryStore = useGalleryStore()
+    const artworkId = artworkInfo.value.id || router.currentRoute.value.params.id
+
+    // 硬删除（删除Blob中的文件）
+    await galleryStore.deleteArtwork(artworkId as string, false)
+
+    // 删除成功，返回首页
+    alert('作品已删除')
+    router.push('/')
+  } catch (error: any) {
+    alert('删除失败：' + error.message)
+    showDeleteConfirm.value = false
+  } finally {
+    isDeleting.value = false
+  }
+}
+
+// 取消删除
+const cancelDelete = () => {
+  showDeleteConfirm.value = false
+}
+
 // 打开评论弹窗
 const openCommentModal = () => {
   showCommentModal.value = true
@@ -756,7 +792,7 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  width: 100vw;
+  width: calc(100vw - var(--scrollbar-width, 0px));
   height: calc(100vh - 72px);
   background: var(--color-bg-primary);
   overflow: hidden;
@@ -767,7 +803,7 @@ onUnmounted(() => {
 
 .detail-container {
   display: flex;
-  width: 100vw;
+  width: calc(100vw - var(--scrollbar-width, 0px));
   height: 100%;
   margin: 0;
   padding: 0;
@@ -1297,6 +1333,35 @@ onUnmounted(() => {
   border-color: var(--color-accent-hover);
 }
 
+.action-btn.delete-btn {
+  background: #f5f5f5;
+  color: #333;
+  border-color: #ddd;
+}
+
+.action-btn.delete-btn:hover:not(:disabled) {
+  background: #ff6b6b;
+  color: white;
+  border-color: #ff6b6b;
+}
+
+.action-btn.delete-btn.confirm {
+  background: #ff6b6b;
+  color: white;
+  border-color: #ff6b6b;
+  animation: pulse 0.5s ease-in-out;
+}
+
+.action-btn.delete-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
 /* 响应式 */
 @media (max-width: 1440px) {
   .artwork-info-section {
@@ -1314,12 +1379,12 @@ onUnmounted(() => {
   }
   
   .artwork-images-section {
-    width: 100vw;
+    width: calc(100vw - var(--scrollbar-width, 0px));
     height: 60vh;
   }
   
   .artwork-info-section {
-    width: 100vw;
+    width: calc(100vw - var(--scrollbar-width, 0px));
     height: 40vh;
     border-left: none;
     border-top: 1px solid var(--color-border);

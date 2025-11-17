@@ -302,8 +302,8 @@ onUnmounted(() => {
   padding: var(--space-16) 0;
   position: relative;
   overflow: visible;
-  width: 100vw;
-  margin-left: calc(-50vw + 50%);
+  width: calc(100vw - var(--scrollbar-width, 0px));
+  margin-left: calc(50% - (100vw - var(--scrollbar-width, 0px)) / 2);
 }
 
 .section-header {
@@ -602,7 +602,7 @@ onUnmounted(() => {
 }
 
 /* 响应式 */
-@media (min-width: 2560px) {
+@media (min-width: 3200px) {
   .scroll-item {
     flex: 0 0 clamp(380px, 16vw, 500px);  /* 4K屏幕更大尺寸 */
   }
@@ -708,9 +708,9 @@ onUnmounted(() => {
   }
   
   .scroll-item {
-    flex: 0 0 calc(100vw - 90px); /* 单个项目占满宽度，留出按钮空间 */
-    max-width: calc(100vw - 90px);
-    min-width: calc(100vw - 90px);
+    flex: 0 0 calc(100vw - var(--scrollbar-width, 0px) - 90px); /* 单个项目占满宽度，留出按钮空间 */
+    max-width: calc(100vw - var(--scrollbar-width, 0px) - 90px);
+    min-width: calc(100vw - var(--scrollbar-width, 0px) - 90px);
     scroll-snap-align: start; /* 吸附对齐到开始位置 */
     opacity: 1 !important; /* 确保移动端直接显示 */
   }
@@ -761,9 +761,9 @@ onUnmounted(() => {
 
 @media (max-width: 480px) {
   .scroll-item {
-    flex: 0 0 calc(100vw - 80px);
-    max-width: calc(100vw - 80px);
-    min-width: calc(100vw - 80px);
+    flex: 0 0 calc(100vw - var(--scrollbar-width, 0px) - 80px);
+    max-width: calc(100vw - var(--scrollbar-width, 0px) - 80px);
+    min-width: calc(100vw - var(--scrollbar-width, 0px) - 80px);
   }
   
   .item-image {

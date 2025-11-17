@@ -83,7 +83,9 @@ const initTwikooInstance = async () => {
     console.log('🚀 开始初始化 Twikoo，作品 ID:', props.artworkId)
 
     // 获取默认配置
-    const options = getDefaultOptions(`/artwork/${props.artworkId}`)
+    // 统一评论路径：自动去除移动端的 /m 前缀，确保PC和移动端共享评论
+    const commentPath = `/artwork/${props.artworkId}`.replace(/^\/m\//, '/')
+    const options = getDefaultOptions(commentPath)
 
     // 更新配置
     options.el = '#twikoo-comments'

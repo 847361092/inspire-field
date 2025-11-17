@@ -139,7 +139,22 @@
         </svg>
         <span>下载</span>
       </button>
+      <button class="action-btn" @click="openCommentModal">
+        <svg viewBox="0 0 24 24">
+          <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
+        </svg>
+        <span>评论{{ commentCount > 0 ? `(${commentCount})` : '' }}</span>
+      </button>
     </div>
+
+    <!-- 评论弹窗 -->
+    <CommentModal
+      :is-open="showCommentModal"
+      :artwork-id="artworkInfo.id"
+      :artwork-title="artworkInfo.title"
+      @close="closeCommentModal"
+      @comment-count-change="handleCommentCountChange"
+    />
   </div>
 </template>
 
@@ -148,6 +163,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useGalleryStore } from '@/stores/gallery'
 import { marked } from 'marked'
+import CommentModal from '@/components/comments/CommentModal.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -192,6 +208,10 @@ const stats = ref({
 const liked = ref(false)
 const collected = ref(false)
 
+// 评论相关
+const showCommentModal = ref(false)
+const commentCount = ref(0)
+
 // 分类标签映射
 const categoryLabels: Record<string, string> = {
   mecha: '机甲设计',
@@ -231,10 +251,8 @@ const loadArtworkData = async () => {
   
   try {
     // 尝试从API获取动态作品数据
-    const apiUrl = import.meta.env.PROD 
-      ? '/api/artworks'
-      : 'http://localhost:3001/api/artworks'
-    
+    const apiUrl = '/api/artworks'
+
     const response = await fetch(apiUrl)
     if (response.ok) {
       const data = await response.json()
@@ -245,21 +263,17 @@ const loadArtworkData = async () => {
         
         if (artwork) {
           // 加载所有图片（不只是缩略图）
-          artworkImages.value = artwork.images.map((img: string) => 
-            import.meta.env.PROD ? img : `http://localhost:3001${img}`
-          )
-          
+          artworkImages.value = artwork.images.map((img: string) => img)
+
           artworkInfo.value.title = artwork.title
           artworkInfo.value.category = artwork.category
-          
+
           // 使用API返回的作者信息
           if (artwork.authorName) {
             artworkInfo.value.author = artwork.authorName
           }
           if (artwork.authorAvatar) {
-            authorAvatar.value = import.meta.env.PROD 
-              ? artwork.authorAvatar 
-              : `http://localhost:3001${artwork.authorAvatar}`
+            authorAvatar.value = artwork.authorAvatar
           }
           
           // 加载MD文件
@@ -277,15 +291,14 @@ const loadArtworkData = async () => {
   const encodedWorkName = encodeURIComponent(workName)
   const basePath = `/artworks/${category}/${encodedWorkName}/`
   const imageCount = getImageCount(workName)
-  const imagePrefix = import.meta.env.PROD ? '' : 'http://localhost:3001'
-  
+
   const images = []
   for (let i = 1; i <= imageCount; i++) {
-    images.push(`${imagePrefix}${basePath}image_${i}.webp`)
+    images.push(`${basePath}image_${i}.webp`)
   }
-  
+
   artworkImages.value = images.length > 0 ? images : [
-    `${imagePrefix}${basePath}image_1.webp`
+    `${basePath}image_1.webp`
   ]
   
   // 加载Markdown文档
@@ -332,10 +345,8 @@ const loadMarkdownContent = async (category: string, workName: string) => {
   ]
   
   for (const mdFileName of possibleMdFiles) {
-    const mdUrl = import.meta.env.PROD 
-      ? `${basePath}${mdFileName}`
-      : `http://localhost:3001${basePath}${mdFileName}`
-    
+    const mdUrl = `${basePath}${mdFileName}`
+
     try {
       const response = await fetch(mdUrl + `?t=${Date.now()}`)
       if (response.ok) {
@@ -471,6 +482,19 @@ const handleDownload = () => {
     link.download = `${artworkInfo.value.title}_${index + 1}.webp`
     link.click()
   })
+}
+
+// 评论相关
+const openCommentModal = () => {
+  showCommentModal.value = true
+}
+
+const closeCommentModal = () => {
+  showCommentModal.value = false
+}
+
+const handleCommentCountChange = (count: number) => {
+  commentCount.value = count
 }
 
 // 处理图片加载错误

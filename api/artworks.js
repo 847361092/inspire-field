@@ -20,6 +20,8 @@ export default async function handler(req, res) {
   }
 
   try {
+    // 获取查询参数
+    const { category, page = 1, limit = 12, search, featured, sort = 'latest' } = req.query;
     // 获取所有存储的作品元数据
     const { blobs } = await list({
       prefix: 'artworks/',
@@ -104,16 +106,61 @@ export default async function handler(req, res) {
       });
     }
 
-    // 按创建时间排序（最新的在前）
-    artworks.sort((a, b) => {
-      const dateA = new Date(a.createdAt || 0);
-      const dateB = new Date(b.createdAt || 0);
-      return dateB - dateA;
-    });
+    // 筛选作品
+    let filteredArtworks = artworks;
+
+    // 分类筛选
+    if (category && category !== 'all') {
+      filteredArtworks = filteredArtworks.filter(a => a.category === category);
+    }
+
+    // 搜索筛选
+    if (search) {
+      const searchLower = search.toLowerCase();
+      filteredArtworks = filteredArtworks.filter(a =>
+        a.title?.toLowerCase().includes(searchLower) ||
+        a.description?.toLowerCase().includes(searchLower) ||
+        a.tags?.some(tag => tag.toLowerCase().includes(searchLower))
+      );
+    }
+
+    // 精选筛选
+    if (featured === 'true') {
+      filteredArtworks = filteredArtworks.filter(a => a.isFeatured === true);
+    }
+
+    // 排序
+    if (sort === 'latest') {
+      filteredArtworks.sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0);
+        const dateB = new Date(b.createdAt || 0);
+        return dateB - dateA;
+      });
+    } else if (sort === 'popular') {
+      filteredArtworks.sort((a, b) => (b.views || 0) - (a.views || 0));
+    } else if (sort === 'oldest') {
+      filteredArtworks.sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0);
+        const dateB = new Date(b.createdAt || 0);
+        return dateA - dateB;
+      });
+    }
+
+    // 分页
+    const total = filteredArtworks.length;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const startIndex = (pageNum - 1) * limitNum;
+    const endIndex = startIndex + limitNum;
+    const paginatedArtworks = filteredArtworks.slice(startIndex, endIndex);
 
     return res.status(200).json({
       success: true,
-      artworks,
+      artworks: paginatedArtworks,
+      total,
+      page: pageNum,
+      pageSize: limitNum,
+      totalPages: Math.ceil(total / limitNum),
       source: 'blob'
     });
 

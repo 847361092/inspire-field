@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "dev:vercel": "vercel dev",
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "build-only": "vite build",
@@ -17,6 +18,8 @@
     "artwork:list": "node artwork-manager.cjs list",
     "artwork:update": "node artwork-manager.cjs update",
     "artwork:delete": "node artwork-manager.cjs delete",
+    "artwork:migrate": "node scripts/migrate-to-blob.js",
+    "artwork:verify": "node scripts/verify-migration.js",
     "convert-webp": "node convert-to-webp.cjs"
   },
   "dependencies": {

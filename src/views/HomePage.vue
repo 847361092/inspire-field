@@ -157,7 +157,9 @@
         <span class="fab-icon" :style="{ transform: fabExpanded ? 'rotate(90deg)' : 'rotate(0)', transition: 'transform 0.3s' }">⚙️</span>
       </button>
       <transition-group name="fab">
-  
+        <button v-if="fabExpanded" class="fab-btn sub" key="upload" @click="handleUpload" title="上传作品">
+          <span class="fab-icon">📤</span>
+        </button>
         <button v-if="fabExpanded" class="fab-btn sub" key="filter" @click="handleFilter" title="高级筛选">
           <span class="fab-icon">🔍</span>
         </button>
@@ -172,10 +174,17 @@
     
     <!-- 回到顶部按钮 -->
     <ScrollToTop />
-    
+
+    <!-- 上传弹窗 -->
+    <UploadModal
+      :is-open="showUploadModal"
+      @close="showUploadModal = false"
+      @upload-success="handleUploadSuccess"
+    />
+
     <!-- 全局噪点纹理叠加 -->
     <div class="noise-overlay"></div>
-    
+
   </div>
 </template>
 
@@ -197,6 +206,7 @@ import { useSmoothScroll } from '@/composables/useSmoothScroll'
 import { useCursor } from '@/composables/useCursor'
 import { useMobile } from '@/composables/useMobile'
 import { showDebugInfo, copyDebugInfo } from '@/utils/debugInfo'
+import UploadModal from '@/components/upload/UploadModal.vue'
 
 const router = useRouter()
 const transitionStore = useTransitionStore()
@@ -245,6 +255,7 @@ const isLoading = ref(false)
 const isFullscreen = ref(false)
 const fabExpanded = ref(false)
 const artworks = ref<any[]>([])
+const showUploadModal = ref(false)
 
 // 滚动相关
 const filterTabsRef = ref<HTMLElement>()
@@ -684,6 +695,22 @@ const handleFilter = () => {
   fabExpanded.value = false
 }
 
+const handleUpload = () => {
+  showUploadModal.value = true
+  fabExpanded.value = false
+}
+
+const handleUploadSuccess = async (artworkId: string) => {
+  console.log('上传成功:', artworkId)
+  showUploadModal.value = false
+
+  // 刷新作品列表
+  await loadArtworksFromAPI()
+
+  // 可选：跳转到新作品详情页
+  // router.push(`/artwork/${artworkId}`)
+}
+
 const handleDebug = () => {
   showDebugInfo()
   copyDebugInfo().then(() => {
@@ -921,11 +948,9 @@ const scrollTabs = (direction: 'left' | 'right') => {
 // 获取动态分类列表
 const fetchCategories = async () => {
   try {
-    // 自动适配本地和生产环境
-    const apiUrl = import.meta.env.PROD 
-      ? '/api/categories'  // 生产环境使用Vercel函数
-      : 'http://localhost:3001/api/categories'  // 开发环境
-    
+    // 使用相对路径，Vite会自动代理到生产API
+    const apiUrl = '/api/categories'
+
     const response = await fetch(apiUrl)
     const data = await response.json()
     
@@ -1012,11 +1037,9 @@ onMounted(async () => {
 const loadArtworksFromAPI = async () => {
   isLoading.value = true
   try {
-    // 自动适配本地和生产环境
-    const apiUrl = import.meta.env.PROD 
-      ? '/api/artworks'  // 生产环境使用Vercel函数
-      : 'http://localhost:3001/api/artworks'  // 开发环境
-    
+    // 使用相对路径，Vite会自动代理到生产API
+    const apiUrl = '/api/artworks'
+
     console.log('正在从API加载作品...')
     
     // 模拟最小加载时间，让骨架屏显示
@@ -1034,21 +1057,21 @@ const loadArtworksFromAPI = async () => {
       const apiArtworks = data.artworks.map((artwork: any) => ({
         id: artwork.id,
         title: artwork.title,
-        thumbnail: import.meta.env.PROD ? artwork.thumbnail : `http://localhost:3001${artwork.thumbnail}`,
+        thumbnail: artwork.thumbnail,
         category: artwork.category,
         author: {
           name: artwork.authorName || '数字艺术家',  // 使用API返回的authorName
-          avatar: artwork.authorAvatar ? (import.meta.env.PROD ? artwork.authorAvatar : `http://localhost:3001${artwork.authorAvatar}`) : `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70) + 1}`  // 如果有自定义头像则使用，否则生成随机头像
+          avatar: artwork.authorAvatar ? artwork.authorAvatar : `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70) + 1}`  // 如果有自定义头像则使用，否则生成随机头像
         },
         description: artwork.description || null, // 保留作品描述
-        authorAvatar: artwork.authorAvatar ? (import.meta.env.PROD ? artwork.authorAvatar : `http://localhost:3001${artwork.authorAvatar}`) : null, // 保留作者头像
+        authorAvatar: artwork.authorAvatar ? artwork.authorAvatar : null, // 保留作者头像
         views: Math.floor(Math.random() * 50000) + 1000,
         likes: Math.floor(Math.random() * 5000) + 100,
         width: 400,
         height: Math.floor(400 + Math.random() * 300),
         createdAt: artwork.createdAt, // 保留API返回的创建时间
         imageCount: artwork.imageCount, // 保留图片数量
-        images: artwork.images ? artwork.images.map((img: string) => import.meta.env.PROD ? img : `http://localhost:3001${img}`) : [], // 保留图片数组
+        images: artwork.images ? artwork.images.map((img: string) => img) : [], // 保留图片数组
         isFromAPI: true // 标记为来自API的作品
       }))
       
@@ -1255,7 +1278,7 @@ onUnmounted(() => {
   min-height: 100vh;
   background: var(--color-bg-primary);
   position: relative;
-  width: 100vw;
+  width: calc(100vw - var(--scrollbar-width, 0px));
   overflow-x: hidden;
   padding-top: 72px; /* Header高度 */
 }
@@ -1280,7 +1303,7 @@ onUnmounted(() => {
   position: relative;
   z-index: 2;
   width: 100%;
-  max-width: 100vw;
+  max-width: calc(100vw - var(--scrollbar-width, 0px));
   overflow-x: hidden;
   padding-left: var(--space-8);
   padding-right: var(--space-8);

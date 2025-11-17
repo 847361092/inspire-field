@@ -96,7 +96,7 @@
   --container-lg: 1024px;
   --container-xl: 1280px;
   --container-2xl: 1440px;
-  --container-max: calc(100vw - var(--space-8) * 2);  /* 全宽减去左右内边距 */
+  --container-max: calc(100vw - var(--scrollbar-width, 0px) - var(--space-8) * 2);  /* 全宽减去左右内边距 */
   
   /* 视口宽度处理 */
   --vw-offset: 100vw;

@@ -107,12 +107,8 @@ export const useGalleryStore = defineStore('gallery', () => {
     error.value = null
     
     try {
-      // 自动适配本地和生产环境
-      const apiUrl = import.meta.env.PROD 
-        ? '/api/artworks'  // 生产环境使用Vercel函数
-        : window.location.hostname === 'localhost'
-          ? 'http://localhost:3001/api/artworks'  // 本地开发
-          : `http://${window.location.hostname}:3001/api/artworks`  // 局域网访问
+      // 统一使用相对路径，Vite 会根据配置自动代理
+      const apiUrl = '/api/artworks'
       
       // 尝试从上传服务器获取数据
       try {
@@ -383,6 +379,174 @@ export const useGalleryStore = defineStore('gallery', () => {
     sessionStorage.removeItem('gallery_scroll_positions')
   }
 
+  // 上传作品
+  const uploadArtwork = async (formData: {
+    workName: string
+    title: string
+    category: string
+    description: string
+    authorName: string
+    tags: string[]
+    featured: boolean
+    images: File[]
+    markdownFile?: File
+    authorAvatar?: File
+  }) => {
+    loading.value = true
+    error.value = null
+
+    try {
+      // 1. 准备文件列表
+      const files = [
+        ...formData.images.map((img, i) => ({
+          name: `image_${i + 1}.webp`,
+          size: img.size,
+          type: img.type
+        })),
+        formData.markdownFile && {
+          name: `${formData.workName}.md`,
+          size: formData.markdownFile.size,
+          type: formData.markdownFile.type
+        },
+        formData.authorAvatar && {
+          name: 'author.jpg',
+          size: formData.authorAvatar.size,
+          type: formData.authorAvatar.type
+        }
+      ].filter(Boolean)
+
+      // 2. 获取上传配置
+      const presignRes = await fetch('/api/artworks/presign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category: formData.category,
+          workName: formData.workName,
+          files,
+          metadata: {
+            title: formData.title,
+            description: formData.description,
+            authorName: formData.authorName,
+            tags: formData.tags,
+            featured: formData.featured
+          }
+        })
+      })
+
+      if (!presignRes.ok) {
+        throw new Error('Failed to prepare upload')
+      }
+
+      const { uploadUrls, metadata, artworkId } = await presignRes.json()
+
+      // 3. 上传所有文件（使用 @vercel/blob 客户端）
+      const { upload } = await import('@vercel/blob/client')
+
+      const filesToUpload = [
+        ...formData.images,
+        formData.markdownFile,
+        formData.authorAvatar
+      ].filter(Boolean)
+
+      await Promise.all(
+        filesToUpload.map(async (file, index) => {
+          const { blobPath } = uploadUrls[index]
+          await upload(blobPath, file, {
+            access: 'public',
+            handleUploadUrl: '/api/artworks/upload-handler'
+          })
+        })
+      )
+
+      // 4. 上传 metadata.json
+      const metadataBlob = new Blob([JSON.stringify(metadata, null, 2)], {
+        type: 'application/json'
+      })
+
+      await upload(
+        `artworks/${formData.category}/${formData.workName}/metadata.json`,
+        metadataBlob,
+        {
+          access: 'public',
+          handleUploadUrl: '/api/artworks/upload-handler'
+        }
+      )
+
+      // 5. 重新加载作品列表
+      artworks.value = [] // 清空缓存
+      await fetchArtworks()
+
+      return { success: true, artworkId }
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Upload failed'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // 更新作品
+  const updateArtwork = async (id: string, updates: Partial<Artwork>) => {
+    loading.value = true
+    error.value = null
+
+    try {
+      const res = await fetch(`/api/artworks/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      })
+
+      if (!res.ok) {
+        throw new Error('Failed to update artwork')
+      }
+
+      const { artwork } = await res.json()
+
+      // 更新本地状态
+      const index = artworks.value.findIndex(a => a.id === id)
+      if (index !== -1) {
+        artworks.value[index] = {
+          ...artworks.value[index],
+          ...artwork
+        }
+      }
+
+      return { success: true, artwork }
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Update failed'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // 删除作品
+  const deleteArtwork = async (id: string, soft = false) => {
+    loading.value = true
+    error.value = null
+
+    try {
+      const res = await fetch(`/api/artworks/${id}?soft=${soft}`, {
+        method: 'DELETE'
+      })
+
+      if (!res.ok) {
+        throw new Error('Failed to delete artwork')
+      }
+
+      // 从本地状态移除
+      artworks.value = artworks.value.filter(a => a.id !== id)
+
+      return { success: true }
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Delete failed'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     artworks,
     loading,
@@ -419,6 +583,10 @@ export const useGalleryStore = defineStore('gallery', () => {
     saveScrollPosition,
     getScrollPosition,
     loadScrollPositions,
-    clearScrollPositions
+    clearScrollPositions,
+    // 新增：上传、更新、删除方法
+    uploadArtwork,
+    updateArtwork,
+    deleteArtwork
   }
 })

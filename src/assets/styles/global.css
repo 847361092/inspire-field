@@ -344,14 +344,14 @@ body > #app {
   /* 根容器宽度限制 */
   #app {
     width: 100%;
-    max-width: 100vw;
+    max-width: calc(100vw - var(--scrollbar-width, 0px));
     overflow-x: hidden;
     position: relative;
   }
   
   .main-content {
     width: 100%;
-    max-width: 100vw;
+    max-width: calc(100vw - var(--scrollbar-width, 0px));
     overflow-x: hidden;
   }
   
