@@ -14,18 +14,21 @@
 
 **在 Windows 中操作：**
 
-1. 打开项目文件夹
-2. **双击** `push-to-github.bat` 文件
-3. 当提示输入凭证时，输入：
-   - **用户名**: 847361092
-   - **密码**: 你的 GitHub Personal Access Token
+1. 打开项目文件夹：`C:\Users\84736\Downloads\下载\咸鱼x6副本\灵感1116`
+2. 找到 `push-to-github.bat` 文件，**双击**运行
+3. 按照屏幕提示操作：
+   - 脚本会逐步执行 4 个步骤
+   - 当提示输入凭证时，输入：
+     - **用户名**: 847361092
+     - **密码**: 你的 GitHub Personal Access Token
 
    > 没有 Token？[点击这里生成](https://github.com/settings/tokens/new?scopes=repo&description=Local%20development)
    > - 选择 `repo` scope
    > - 有效期 90 天
    > - 点击 Generate 并复制 token（格式：`ghp_xxxxx...`）
 
-4. 等待脚本完成，看到 ✅ 符号表示成功
+4. 看到 `SUCCESS: Code pushed to GitHub!` 表示成功
+5. 按任意键关闭窗口
 
 ### 步骤 2️⃣: 验证 GitHub（1分钟）
 
