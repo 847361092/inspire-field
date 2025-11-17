@@ -6,6 +6,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 这是一个基于 Vue 3 + TypeScript 的艺术作品展示平台，采用静态内容管理方式，类似于博客系统管理作品内容。项目支持响应式设计，自动适配PC/移动端，使用Vercel进行自动部署。
 
+**生产环境**: https://inspire-field.vercel.app
+**最新版本**: v1.0.0
+**最后更新**: 2025-11-18
+
+### 最新功能 (v1.0.0)
+- ✅ 作品上传功能（Vercel Blob 存储）
+- ✅ 作品删除功能（二次确认机制）
+- ✅ Twikoo 评论系统集成
+- ✅ PC/移动端响应式适配
+- ✅ 图片瀑布流布局
+- ✅ 分类筛选和搜索
+
 ## 常用开发命令
 
 ### 开发与构建
@@ -286,11 +298,142 @@ start "前端服务器" npm run dev
 ```
 然后双击 `dev-start.bat` 同时启动两个服务。
 
+## 部署到 Vercel
+
+### 自动部署流程
+
+项目已配置 GitHub 集成，推送代码到 `main` 分支会自动触发 Vercel 部署：
+
+1. **提交代码**：
+   ```bash
+   git add .
+   git commit -m "Update: 描述你的更改"
+   git push origin main
+   ```
+
+2. **Vercel 自动检测**并开始构建（通常 2-3 分钟）
+
+3. **部署完成**后访问 https://inspire-field.vercel.app
+
+### 环境变量配置
+
+在 Vercel Dashboard 中配置以下环境变量：
+
+| 变量名 | 值 | 说明 |
+|-------|-----|------|
+| `VITE_TWIKOO_ENV_ID` | `https://twiko-rose.vercel.app` | Twikoo 评论系统 |
+| `BLOB_READ_WRITE_TOKEN` | `vercel_blob_rw_xxxxx` | Vercel Blob 存储令牌 |
+| `MONGODB_URI` | `mongodb+srv://...` | MongoDB 连接（Twikoo） |
+
+**配置步骤**：
+1. 访问 Vercel Dashboard → 选择项目
+2. Settings → Environment Variables
+3. 添加变量，选择 Production scope
+4. 保存后重新部署
+
+### Git 作者配置（重要！）
+
+Vercel 要求提交作者邮箱必须关联到 GitHub 账户：
+
+```bash
+git config --global user.name "847361092"
+git config --global user.email "bajiaojun@outlook.com"
+```
+
+**如果部署失败**显示作者邮箱错误：
+```bash
+git commit --amend --author="bajiaojun <bajiaojun@outlook.com>" --no-edit
+git push origin main --force-with-lease
+```
+
+### 手动触发部署
+
+如果 Vercel 没有自动部署：
+
+1. 访问 Vercel Dashboard → 项目 → Deployments
+2. 点击最新部署右侧的 "..." 菜单
+3. 选择 "Redeploy"
+
+## 作品文件结构说明
+
+### 实际的分类分配（重要！）
+
+`public/artworks/` 中的作品按以下规则分配到三个分类：
+
+- **mecha**（机甲设计）: 作品001, 004, 007, 010, 013, 016
+- **concept**（概念设计）: 作品002, 005, 008, 011, 014, 017
+- **illustration**（插画艺术）: 作品003, 006, 009, 012, 015, 018
+
+**注意**：`api/artworks.js` 中的 `generateMockArtworks` 函数必须与此结构保持一致，否则会导致图片 404。
+
+### 作品文件夹结构
+
+```
+public/artworks/[分类]/[作品名]/
+├── image_1.webp      # 第一张图片（必需）
+├── image_2.webp      # 第二张图片
+├── image_3.webp      # ...
+├── image_4.webp
+├── image_5.webp      # （部分作品只有4张）
+├── author.jpg        # 作者头像（可选）
+└── 作品名.md         # 元数据文件
+```
+
+**图片数量**：
+- 大部分作品：5 张图片
+- 作品010：4 张图片
+- 作品018：4 张图片
+
 ## 重要提醒
 
 1. **中文对话**: 请使用中文与用户交流
 2. **静态内容**: 所有作品通过文件系统管理，无需数据库
 3. **Git工作流**: 内容更新通过Git提交触发自动部署
-4. **开发环境**: 本地开发需启动两个服务（图片服务器 + 前端服务器）
+4. **开发环境**: 本地开发只需 `npm run dev`（已废弃双服务器模式）
 5. **图片管理**: 使用提供的工具批量转换和管理图片
 6. **评论系统**: 完全托管于 Vercel + MongoDB Atlas，无需本地配置
+7. **中文路径**: Vercel 支持 UTF-8 中文路径，不需要使用 `encodeURIComponent`
+8. **TypeScript**: 构建前强制类型检查，确保所有类型正确
+
+## 故障排查
+
+### 图片不显示
+
+1. **检查文件路径**：
+   - 确认图片在正确的分类文件夹下
+   - 文件名必须是 `image_1.webp`, `image_2.webp` 等
+
+2. **检查 API 返回**：
+   - 浏览器访问 `/api/artworks`
+   - 验证返回的 `category` 和实际文件夹匹配
+
+3. **检查分类分配**：
+   - 参考上面的"实际的分类分配"
+   - 修改 `api/artworks.js` 中的 `works` 数组
+
+### Vercel 部署失败
+
+1. **TypeScript 错误**：
+   - 本地运行 `npm run type-check`
+   - 修复所有类型错误后再推送
+
+2. **Git 作者错误**：
+   - 检查 `git config --global user.email`
+   - 确保邮箱与 GitHub 账户关联
+
+3. **环境变量缺失**：
+   - 检查 Vercel Dashboard 中的环境变量
+   - 确保所有必需的变量都已配置
+
+## 相关文档
+
+- [用户使用指南](./USER_GUIDE.md) - 完整的使用说明
+- [更新日志 2025-11-18](./CHANGELOG_20251118.md) - 今日工作记录
+- [部署指南](./DEPLOYMENT_GITHUB.md) - GitHub 部署详细步骤
+- [故障排查](./PUSH_TROUBLESHOOTING.md) - 推送问题解决方案
+
+---
+
+**最后更新**: 2025-11-18 02:00 AM
+**项目状态**: ✅ 生产环境稳定运行
+**下一步计划**: 验证上传/删除功能、性能优化
