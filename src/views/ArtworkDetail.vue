@@ -108,29 +108,41 @@
           </Transition>
         </div>
 
-        <!-- 底部操作按钮 -->
-        <div class="action-buttons">
-          <button class="action-btn primary" @click="handleLike">
+        <!-- 底部操作按钮（折叠式） -->
+        <div class="action-buttons" ref="desktopActionsRef">
+          <button class="action-btn primary like-btn" @click="handleLike">
             <span class="icon">{{ liked ? '❤️' : '🤍' }}</span>
             <span>{{ liked ? '已喜欢' : '喜欢' }}</span>
           </button>
-          <button class="action-btn" @click="handleDownload">
-            <span class="icon">⬇️</span>
-            <span>下载</span>
+          <button class="action-btn toggle-btn" @click.stop="toggleDesktopActions">
+            <span>操作</span>
+            <svg class="chevron" :class="{ open: showDesktopActions }" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
           </button>
-          <CommentButton
-            :comment-count="commentCount"
-            @click="openCommentModal"
-          />
-          <button
-            class="action-btn delete-btn"
-            :class="{ 'confirm': showDeleteConfirm }"
-            @click="handleDelete"
-            :disabled="isDeleting"
-          >
-            <span class="icon">🗑️</span>
-            <span>{{ showDeleteConfirm ? '确认删除？' : '删除' }}</span>
-          </button>
+
+          <!-- 下拉菜单 -->
+          <Transition name="action-popover">
+            <div v-if="showDesktopActions" class="action-popover">
+              <button class="action-item" @click="handleDownload">
+                <span class="item-icon">⬇️</span>
+                <span>下载</span>
+              </button>
+              <button class="action-item" @click="openCommentModal">
+                <span class="item-icon">💬</span>
+                <span>评论 ({{ commentCount }})</span>
+              </button>
+              <button
+                class="action-item danger"
+                :class="{ 'confirm': showDeleteConfirm }"
+                @click="handleDelete"
+                :disabled="isDeleting"
+              >
+                <span class="item-icon">🗑️</span>
+                <span>{{ showDeleteConfirm ? '确认删除？' : '删除' }}</span>
+              </button>
+            </div>
+          </Transition>
         </div>
       </div>
     </div>
@@ -206,22 +218,43 @@
         </Transition>
       </div>
 
-      <!-- 移动端底部操作栏 -->
-      <div class="mobile-actions">
-        <button class="mobile-action-btn" @click="handleLike">
-          {{ liked ? '❤️' : '🤍' }}
-        </button>
-        <button class="mobile-action-btn" @click="handleCollection">
-          {{ collected ? '⭐' : '☆' }}
-        </button>
-        <button class="mobile-action-btn" @click="handleDownload">
-          ⬇️
-        </button>
-        <CommentButton
-          :comment-count="commentCount"
-          @click="openCommentModal"
-        />
-      </div>
+      <!-- 移动端浮动操作按钮 -->
+      <button class="mobile-fab" @click="toggleMobileActionSheet">
+        <span class="fab-icon">{{ liked ? '❤️' : '🤍' }}</span>
+        <span class="fab-text">操作</span>
+      </button>
+
+      <!-- 移动端底部操作表 -->
+      <Transition name="action-sheet">
+        <div v-if="showMobileActionSheet" class="action-sheet">
+          <div class="sheet-backdrop" @click="closeMobileActionSheet"></div>
+          <div class="sheet-panel">
+            <button class="sheet-item" @click="handleLike">
+              <span class="item-icon">{{ liked ? '❤️' : '🤍' }}</span>
+              <span>喜欢</span>
+              <span class="item-count">{{ Math.floor(Math.random() * 1000 + 100) }}</span>
+            </button>
+            <button class="sheet-item" @click="handleCollection">
+              <span class="item-icon">{{ collected ? '⭐' : '☆' }}</span>
+              <span>收藏</span>
+              <span class="item-count">{{ Math.floor(Math.random() * 500 + 50) }}</span>
+            </button>
+            <button class="sheet-item" @click="handleDownload">
+              <span class="item-icon">⬇️</span>
+              <span>下载图片</span>
+            </button>
+            <button class="sheet-item" @click="openCommentModal">
+              <span class="item-icon">💬</span>
+              <span>评论</span>
+              <span class="item-badge">{{ commentCount }}</span>
+            </button>
+            <button class="sheet-item danger" @click="handleDelete">
+              <span class="item-icon">🗑️</span>
+              <span>{{ showDeleteConfirm ? '确认删除？' : '删除作品' }}</span>
+            </button>
+          </div>
+        </div>
+      </Transition>
     </div>
 
     <!-- 评论弹窗 -->
@@ -289,6 +322,11 @@ const isDeleting = ref(false)
 
 // 折叠面板状态
 const isInfoExpanded = ref(false) // 默认收起
+
+// 操作菜单状态
+const showDesktopActions = ref(false)
+const showMobileActionSheet = ref(false)
+const desktopActionsRef = ref<HTMLElement | null>(null)
 
 // 分类标签映射
 const categoryLabels: Record<string, string> = {
@@ -669,6 +707,34 @@ const toggleDrawer = () => {
   drawerOpen.value = !drawerOpen.value
 }
 
+// PC端操作菜单切换
+const toggleDesktopActions = () => {
+  showDesktopActions.value = !showDesktopActions.value
+}
+
+// PC端操作菜单关闭
+const closeDesktopActions = () => {
+  showDesktopActions.value = false
+}
+
+// 移动端操作表切换
+const toggleMobileActionSheet = () => {
+  showMobileActionSheet.value = !showMobileActionSheet.value
+  if (isMobile.value) vibrate(10)
+}
+
+// 移动端操作表关闭
+const closeMobileActionSheet = () => {
+  showMobileActionSheet.value = false
+}
+
+// 点击外部关闭菜单
+const handleClickOutside = (event: MouseEvent) => {
+  if (desktopActionsRef.value && !desktopActionsRef.value.contains(event.target as Node)) {
+    closeDesktopActions()
+  }
+}
+
 // 移动端图片容器引用
 const mobileImagesContainer = ref<HTMLElement>()
 
@@ -725,15 +791,18 @@ const handleTouchEnd = () => {
 onMounted(async () => {
   // 先加载数据
   await loadArtworkData()
-  
+
   // 数据加载完成后，结束过渡动画
   setTimeout(() => {
     transitionStore.endTransition()
   }, 300)
-  
+
   // 添加键盘事件监听
   window.addEventListener('keydown', handleKeyboard)
-  
+
+  // 添加点击外部监听
+  document.addEventListener('click', handleClickOutside)
+
   // 移动端优化：防止页面滚动影响和自动打开抽屉
   if (isMobile.value && mobileImagesContainer.value) {
     let touchStartY = 0
@@ -783,6 +852,9 @@ onMounted(async () => {
 onUnmounted(() => {
   // 清理键盘事件监听
   window.removeEventListener('keydown', handleKeyboard)
+
+  // 清理点击外部监听
+  document.removeEventListener('click', handleClickOutside)
 })
 </script>
 
@@ -1281,16 +1353,122 @@ onUnmounted(() => {
   display: inline-block;
 }
 
-/* 操作按钮 */
+/* 操作按钮（折叠式布局） */
 .action-buttons {
   padding: var(--space-6) var(--space-8);
   background: var(--color-surface);
   border-top: 1px solid var(--color-border);
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: var(--space-3);
+  position: relative; /* 为下拉菜单定位 */
 }
 
+.like-btn {
+  flex: 1;
+  min-width: 120px;
+}
+
+.toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--duration-fast);
+}
+
+.toggle-btn .chevron {
+  transition: transform var(--duration-fast);
+}
+
+.toggle-btn .chevron.open {
+  transform: rotate(180deg);
+}
+
+.toggle-btn:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-accent);
+}
+
+/* 下拉菜单 */
+.action-popover {
+  position: absolute;
+  bottom: calc(100% + var(--space-3));
+  right: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  padding: var(--space-2);
+  width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  z-index: 100;
+}
+
+/* 菜单项 */
+.action-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--duration-fast);
+  text-align: left;
+}
+
+.action-item .item-icon {
+  font-size: 18px;
+  width: 24px;
+  display: inline-block;
+  text-align: center;
+}
+
+.action-item:hover {
+  background: var(--color-bg-secondary);
+}
+
+.action-item.danger {
+  color: #ff7575;
+}
+
+.action-item.danger:hover {
+  background: rgba(255, 117, 117, 0.1);
+}
+
+/* 下拉菜单动画 */
+.action-popover-enter-active,
+.action-popover-leave-active {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.action-popover-enter-from,
+.action-popover-leave-to {
+  opacity: 0;
+  transform: translateY(8px) scale(0.95);
+}
+
+.action-popover-enter-to,
+.action-popover-leave-from {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* 原有按钮样式保留（兼容性） */
 .action-btn {
   display: flex;
   align-items: center;
@@ -1605,41 +1783,158 @@ onUnmounted(() => {
   .mobile-stats .stat i.active {
     color: var(--color-accent);
   }
-  
-  /* 移动端底部操作栏 */
-  .mobile-actions {
+
+  /* 移动端浮动操作按钮 */
+  .mobile-fab {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 60px;
-    background: var(--color-bg-primary);
-    border-top: 1px solid var(--color-border);
-    display: flex;
-    justify-content: space-around;
+    right: var(--space-4);
+    bottom: calc(80px + env(safe-area-inset-bottom)); /* 在底部操作栏上方 */
+    display: inline-flex;
     align-items: center;
-    z-index: 98; /* 在抽屉下方 */
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-  
-  .mobile-action-btn {
-    flex: 1;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-5);
+    background: var(--color-accent);
     border: none;
-    color: var(--color-text-secondary);
-    font-size: 20px;
+    border-radius: 999px;
+    box-shadow: 0 8px 24px rgba(79, 70, 229, 0.4),
+                0 2px 8px rgba(0, 0, 0, 0.2);
+    color: white;
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
     cursor: pointer;
     transition: all var(--duration-fast);
+    z-index: 30;
   }
-  
-  .mobile-action-btn:active {
-    transform: scale(0.9);
+
+  .mobile-fab .fab-icon {
+    font-size: 18px;
   }
-  
+
+  .mobile-fab:active {
+    transform: scale(0.95);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+  }
+
+  /* 移动端操作表 */
+  .action-sheet {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+
+  .sheet-backdrop {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(2px);
+  }
+
+  .sheet-panel {
+    background: var(--color-surface);
+    border-top-left-radius: var(--radius-xl);
+    border-top-right-radius: var(--radius-xl);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+    padding: var(--space-4);
+    padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .sheet-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    color: var(--color-text-primary);
+    font-size: var(--text-base);
+    font-weight: var(--font-medium);
+    cursor: pointer;
+    transition: all var(--duration-fast);
+    text-align: left;
+  }
+
+  .sheet-item .item-icon {
+    font-size: 22px;
+    width: 28px;
+    text-align: center;
+  }
+
+  .sheet-item .item-count {
+    margin-left: auto;
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    opacity: 0.8;
+  }
+
+  .sheet-item .item-badge {
+    margin-left: auto;
+    padding: 2px 8px;
+    background: var(--color-accent);
+    color: white;
+    font-size: var(--text-xs);
+    font-weight: var(--font-semibold);
+    border-radius: 999px;
+    min-width: 20px;
+    text-align: center;
+  }
+
+  .sheet-item:active {
+    transform: scale(0.98);
+    background: var(--color-surface-hover);
+  }
+
+  .sheet-item.danger {
+    background: rgba(255, 117, 117, 0.1);
+    color: #ff7575;
+    border-color: rgba(255, 117, 117, 0.2);
+  }
+
+  .sheet-item.danger:active {
+    background: rgba(255, 117, 117, 0.2);
+  }
+
+  /* 操作表动画 */
+  .action-sheet-enter-active,
+  .action-sheet-leave-active {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .action-sheet-enter-active .sheet-backdrop,
+  .action-sheet-leave-active .sheet-backdrop {
+    transition: opacity 0.3s;
+  }
+
+  .action-sheet-enter-active .sheet-panel,
+  .action-sheet-leave-active .sheet-panel {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .action-sheet-enter-from .sheet-backdrop,
+  .action-sheet-leave-to .sheet-backdrop {
+    opacity: 0;
+  }
+
+  .action-sheet-enter-from .sheet-panel,
+  .action-sheet-leave-to .sheet-panel {
+    transform: translateY(100%);
+  }
+
+  .action-sheet-enter-to .sheet-backdrop,
+  .action-sheet-leave-from .sheet-backdrop {
+    opacity: 1;
+  }
+
+  .action-sheet-enter-to .sheet-panel,
+  .action-sheet-leave-from .sheet-panel {
+    transform: translateY(0);
+  }
+
   /* 底部滑动提示 */
   .scroll-hint {
     padding: 40px 20px;
