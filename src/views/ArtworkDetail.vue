@@ -321,7 +321,7 @@ const showDeleteConfirm = ref(false)
 const isDeleting = ref(false)
 
 // 折叠面板状态
-const isInfoExpanded = ref(false) // 默认收起
+const isInfoExpanded = ref(true) // 默认展开
 
 // 操作菜单状态
 const showDesktopActions = ref(false)
