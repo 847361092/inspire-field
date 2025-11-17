@@ -89,7 +89,19 @@ export default async function handler(req, res) {
         }
         
         metadata.isFeatured = isFeatured;
-        
+
+        // 检测并设置作者头像
+        const basePath = metaFile.pathname.replace(/metadata\.json$/, '')
+        const avatarCandidate = ['author.webp', 'author.jpg', 'author.png', 'author.jpeg']
+          .map(ext => blobs.find(blob => blob.pathname === `${basePath}${ext}`))
+          .find(Boolean)
+
+        if (!metadata.authorAvatar && avatarCandidate) {
+          metadata.authorAvatar = avatarCandidate.url
+        }
+
+        metadata.hasAuthorAvatar = Boolean(avatarCandidate || metadata.authorAvatar)
+
         artworks.push(metadata);
       } catch (error) {
         console.error(`Error loading metadata from ${metaFile.pathname}:`, error);

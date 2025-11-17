@@ -86,6 +86,20 @@
             <div v-if="isInfoExpanded" class="panel-content-wrapper">
               <!-- 作品信息内容 -->
               <div class="info-scroll-container">
+                <!-- 作者卡片 -->
+                <div class="author-card">
+                  <img
+                    :src="safeAuthorAvatar"
+                    class="author-avatar"
+                    :alt="artworkInfo.author"
+                    @error="handleAuthorAvatarError"
+                  />
+                  <div class="author-meta">
+                    <p class="label">作者</p>
+                    <p class="name">{{ artworkInfo.author }}</p>
+                  </div>
+                </div>
+
                 <div class="info-content" v-html="markdownContent"></div>
 
                 <!-- 统计信息 -->
@@ -269,7 +283,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { marked } from 'marked'
 import { useTransitionStore } from '@/stores/transition'
@@ -295,6 +309,8 @@ const artworkInfo = ref({
 
 // 新增：作者头像
 const authorAvatar = ref<string>('')
+const safeAuthorAvatar = ref('/images/default-author.svg')
+const currentWorkSlug = ref('')
 
 const artworkImages = ref<string[]>([])
 const markdownContent = ref('')
@@ -340,20 +356,44 @@ const getCategoryLabel = (category: string): string => {
   return categoryLabels[category] || category
 }
 
+// 规范化头像路径
+const normalizeAvatar = (candidate?: string) => {
+  if (!candidate) return ''
+  if (/^(https?:|data:|\/)/i.test(candidate)) return candidate
+  if (!artworkInfo.value.category || !currentWorkSlug.value) return candidate
+  const encoded = encodeURIComponent(currentWorkSlug.value)
+  return `/artworks/${artworkInfo.value.category}/${encoded}/${candidate}`
+}
+
+// 设置头像
+const setAuthorAvatar = (candidate?: string) => {
+  const normalized = normalizeAvatar(candidate)
+  safeAuthorAvatar.value = normalized || '/images/default-author.svg'
+}
+
+// 监听头像变化
+watch(authorAvatar, value => setAuthorAvatar(value), { immediate: true })
+
+// 点击外部关闭菜单
+const handleAuthorAvatarError = () => {
+  safeAuthorAvatar.value = '/images/default-author.svg'
+}
+
 // 获取作品数据
 const loadArtworkData = async () => {
   const artworkId = route.params.id as string
-  
+
   // 解析ID获取分类和作品名
   // ID格式：category-workName，例如 "mecha-作品001" 或 "concept-作品002"
   const parts = artworkId.split('-')
   let category = 'mecha'
   let workName = '作品001'
-  
+
   if (parts.length >= 2) {
     category = parts[0] // 获取分类：mecha, concept, illustration
     workName = parts.slice(1).join('-') // 获取作品名，处理可能包含的连字符
   }
+  currentWorkSlug.value = workName
   
   // 设置作品信息
   artworkInfo.value = {
@@ -1277,6 +1317,45 @@ onUnmounted(() => {
 .info-scroll-container::-webkit-scrollbar-thumb {
   background: var(--color-border);
   border-radius: 3px;
+}
+
+/* 作者卡片样式 */
+.author-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-4);
+}
+
+.author-card .author-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+  border: 2px solid var(--color-accent);
+}
+
+.author-card .author-meta {
+  flex: 1;
+}
+
+.author-card .author-meta .label {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--space-1) 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.author-card .author-meta .name {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+  margin: 0;
 }
 
 /* Markdown内容样式 */

@@ -34,7 +34,13 @@
     <div class="artwork-info">
       <h3 class="artwork-title">{{ artwork.title }}</h3>
       <div class="artwork-meta">
-        <img :src="artwork.authorAvatar || artwork.author.avatar" class="author-avatar" :alt="artwork.author.name" />
+        <img
+          :src="authorAvatarSrc"
+          class="author-avatar"
+          :alt="artwork.author.name"
+          loading="lazy"
+          @error="handleAuthorAvatarError"
+        />
         <span class="author-name">{{ artwork.author.name }}</span>
         <span class="stats">
           <i class="far fa-eye"></i> {{ formatNumber(artwork.views) }}
@@ -45,7 +51,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
+
+const defaultAuthorAvatar = '/images/default-author.svg'
+const authorAvatarSrc = ref(defaultAuthorAvatar)
+const avatarErrorCount = ref(0)
+
+const pickAuthorAvatar = () => {
+  avatarErrorCount.value = 0
+  authorAvatarSrc.value =
+    props.artwork.authorAvatar ||
+    props.artwork.author?.avatar ||
+    defaultAuthorAvatar
+}
+
+watch(() => props.artwork.id, pickAuthorAvatar, { immediate: true })
+
+const handleAuthorAvatarError = () => {
+  avatarErrorCount.value += 1
+  if (avatarErrorCount.value === 1 && props.artwork.author?.avatar && authorAvatarSrc.value !== props.artwork.author.avatar) {
+    authorAvatarSrc.value = props.artwork.author.avatar
+    return
+  }
+  authorAvatarSrc.value = defaultAuthorAvatar
+}
 
 interface Artwork {
   id: string

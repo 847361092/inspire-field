@@ -190,7 +190,8 @@ const artworkInfo = ref({
 
 // 作者头像
 const authorAvatar = ref<string>('')
-const defaultAvatar = 'https://i.pravatar.cc/150?img=1'
+const defaultAvatar = '/images/default-author.svg'
+const avatarErrorCount = ref(0)
 
 // 作品图片（所有图片，不只是缩略图）
 const artworkImages = ref<string[]>([])
@@ -507,7 +508,12 @@ const handleImageError = (event: Event, index: number) => {
 // 处理头像加载错误
 const handleAvatarError = (event: Event) => {
   const img = event.target as HTMLImageElement
-  img.src = defaultAvatar
+  avatarErrorCount.value++
+  if (avatarErrorCount.value === 1 && img.src !== defaultAvatar) {
+    // 第一次错误，尝试使用默认头像
+    img.src = defaultAvatar
+  }
+  // 如果已经是默认头像還错误，就不再处理
 }
 
 // 初始化
