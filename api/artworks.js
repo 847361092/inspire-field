@@ -251,20 +251,36 @@ async function fetchBlobArtworks() {
           return normalized ? `${blobOrigin}/${normalized}` : null;
         };
 
+        // 处理图片 URL（支持字符串和对象格式）
+        const extractUrl = (item) => {
+          if (!item) return null;
+          if (typeof item === 'string') return item;
+          if (typeof item === 'object' && item.url) return item.url; // 提取对象中的 url 属性
+          return null;
+        };
+
         // 添加缩略图
         if (metadata.images && metadata.images.length > 0) {
           metadata.images = metadata.images
-            .map((img) => toAbsoluteUrl(img) || img)
+            .map((img) => {
+              const url = extractUrl(img);
+              return url ? toAbsoluteUrl(url) || url : null;
+            })
             .filter(Boolean);
-          metadata.thumbnail = toAbsoluteUrl(metadata.thumbnail) || metadata.images[0];
+
+          const thumbnailUrl = extractUrl(metadata.thumbnail);
+          metadata.thumbnail = thumbnailUrl ? toAbsoluteUrl(thumbnailUrl) || thumbnailUrl : metadata.images[0];
         } else if (metadata.thumbnail) {
-          metadata.thumbnail = toAbsoluteUrl(metadata.thumbnail);
+          const thumbnailUrl = extractUrl(metadata.thumbnail);
+          metadata.thumbnail = thumbnailUrl ? toAbsoluteUrl(thumbnailUrl) : null;
         }
         if (metadata.authorAvatar) {
-          metadata.authorAvatar = toAbsoluteUrl(metadata.authorAvatar);
+          const avatarUrl = extractUrl(metadata.authorAvatar);
+          metadata.authorAvatar = avatarUrl ? toAbsoluteUrl(avatarUrl) : null;
         }
         if (metadata.markdownFile) {
-          metadata.markdownFile = toAbsoluteUrl(metadata.markdownFile);
+          const markdownUrl = extractUrl(metadata.markdownFile);
+          metadata.markdownFile = markdownUrl ? toAbsoluteUrl(markdownUrl) : null;
         }
         if (!metadata.imageCount && metadata.images) {
           metadata.imageCount = metadata.images.length;
