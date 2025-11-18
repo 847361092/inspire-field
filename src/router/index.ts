@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomePage from '../views/HomePage.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -7,7 +6,7 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: HomePage,
+      component: () => import('../views/HomePage.vue'),
       beforeEnter: (to, from, next) => {
         // 在路由守卫中检测设备类型
         const userAgent = navigator.userAgent.toLowerCase()
