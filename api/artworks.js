@@ -1,4 +1,5 @@
-import { list } from '@vercel/blob';
+import { promises as fs } from 'fs';
+import path from 'path';
 
 export default async function handler(req, res) {
   // 允许跨域
@@ -22,101 +23,10 @@ export default async function handler(req, res) {
   try {
     // 获取查询参数
     const { category, page = 1, limit = 12, search, featured, sort = 'latest' } = req.query;
-    // 获取所有存储的作品元数据
-    const { blobs } = await list({
-      prefix: 'artworks/',
-      limit: 1000
-    });
 
-    // 筛选出metadata.json文件
-    const metadataFiles = blobs.filter(blob => blob.pathname.endsWith('metadata.json'));
-    
-    // 获取所有作品数据
-    const artworks = [];
-    for (const metaFile of metadataFiles) {
-      try {
-        // 获取元数据内容
-        const response = await fetch(metaFile.url);
-        const metadata = await response.json();
-        
-        // 添加缩略图（使用第一张图片）
-        if (metadata.images && metadata.images.length > 0) {
-          metadata.thumbnail = metadata.images[0];
-        }
-        
-        // 添加是否推荐标记
-        const pathParts = metaFile.pathname.split('/');
-        const folderName = pathParts[pathParts.length - 2];
-        
-        // 方式1：检查markdown文件中的front matter featured标记
-        let isFeatured = false;
-        
-        // 尝试查找对应的markdown文件
-        const markdownFile = blobs.find(blob => 
-          blob.pathname.includes(`${folderName}/${folderName}.md`) || 
-          blob.pathname.includes(`${folderName}/index.md`) ||
-          blob.pathname.match(new RegExp(`${folderName}/.*\\.md$`))
-        );
-        
-        if (markdownFile) {
-          try {
-            const markdownResponse = await fetch(markdownFile.url);
-            const markdownContent = await markdownResponse.text();
-            
-            // 检查是否有YAML front matter
-            const frontMatterRegex = /^---\s*\n([\s\S]*?)\n---/;
-            const frontMatterMatch = markdownContent.match(frontMatterRegex);
-            
-            if (frontMatterMatch) {
-              const frontMatter = frontMatterMatch[1];
-              // 简单解析featured字段
-              const featuredMatch = frontMatter.match(/featured:\s*(true|false)/i);
-              if (featuredMatch && featuredMatch[1].toLowerCase() === 'true') {
-                isFeatured = true;
-              }
-            }
-          } catch (error) {
-            console.warn(`解析markdown文件失败: ${markdownFile.pathname}`, error);
-          }
-        }
-        
-        // 方式2：如果front matter中没有设置，检查是否有.featured文件
-        if (!isFeatured) {
-          const featuredFileCheck = blobs.find(blob => 
-            blob.pathname === `artworks/${metadata.category}/${folderName}/.featured`
-          );
-          isFeatured = !!featuredFileCheck;
-        }
-        
-        metadata.isFeatured = isFeatured;
-
-        // 检测并设置作者头像
-        const basePath = metaFile.pathname.replace(/metadata\.json$/, '')
-        const avatarCandidate = ['author.webp', 'author.jpg', 'author.png', 'author.jpeg']
-          .map(ext => blobs.find(blob => blob.pathname === `${basePath}${ext}`))
-          .find(Boolean)
-
-        if (!metadata.authorAvatar && avatarCandidate) {
-          metadata.authorAvatar = avatarCandidate.url
-        }
-
-        metadata.hasAuthorAvatar = Boolean(avatarCandidate || metadata.authorAvatar)
-
-        artworks.push(metadata);
-      } catch (error) {
-        console.error(`Error loading metadata from ${metaFile.pathname}:`, error);
-      }
-    }
-
-    // 如果没有作品，返回模拟数据（保持与本地API一致的结构）
-    if (artworks.length === 0) {
-      const mockArtworks = generateMockArtworks();
-      return res.status(200).json({
-        success: true,
-        artworks: mockArtworks,
-        source: 'mock'
-      });
-    }
+    // 扫描 public/artworks 目录
+    const artworksDir = path.join(process.cwd(), 'public', 'artworks');
+    const artworks = await scanArtworksDirectory(artworksDir);
 
     // 筛选作品
     let filteredArtworks = artworks;
@@ -173,80 +83,137 @@ export default async function handler(req, res) {
       page: pageNum,
       pageSize: limitNum,
       totalPages: Math.ceil(total / limitNum),
-      source: 'blob'
+      source: 'filesystem'
     });
 
   } catch (error) {
     console.error('Get artworks error:', error);
-    
-    // 发生错误时返回模拟数据
-    const mockArtworks = generateMockArtworks();
+
+    // 发生错误时返回空数组
     return res.status(200).json({
       success: true,
-      artworks: mockArtworks,
-      source: 'mock',
+      artworks: [],
+      total: 0,
+      source: 'error',
       error: error.message
     });
   }
 }
 
-// 生成模拟数据函数（与本地API结构保持一致）
-function generateMockArtworks() {
-  const mockArtworks = [];
+// 扫描作品目录
+async function scanArtworksDirectory(artworksDir) {
+  const artworks = [];
 
-  // 生成18个作品，与本地数据对应
-  // 正确的分类：mecha(001,004,007,010,013,016)、concept(002,005,008,011,014,017)、illustration(003,006,009,012,015,018)
-  const works = [
-    { name: '作品001', category: 'mecha' },
-    { name: '作品002', category: 'concept' },
-    { name: '作品003', category: 'illustration' },
-    { name: '作品004', category: 'mecha' },
-    { name: '作品005', category: 'concept' },
-    { name: '作品006', category: 'illustration' },
-    { name: '作品007', category: 'mecha' },
-    { name: '作品008', category: 'concept' },
-    { name: '作品009', category: 'illustration' },
-    { name: '作品010', category: 'mecha' },
-    { name: '作品011', category: 'concept' },
-    { name: '作品012', category: 'illustration' },
-    { name: '作品013', category: 'mecha' },
-    { name: '作品014', category: 'concept' },
-    { name: '作品015', category: 'illustration' },
-    { name: '作品016', category: 'mecha' },
-    { name: '作品017', category: 'concept' },
-    { name: '作品018', category: 'illustration' }
-  ];
+  try {
+    // 读取所有分类文件夹
+    const categories = await fs.readdir(artworksDir);
 
-  works.forEach((work, index) => {
-    const imageCount = work.name === '作品018' ? 4 : 5; // 作品018只有4张图
-    const images = [];
+    for (const category of categories) {
+      const categoryPath = path.join(artworksDir, category);
+      const stats = await fs.stat(categoryPath);
 
-    // 生成图片路径（需要与实际部署路径匹配）
-    for (let i = 1; i <= imageCount; i++) {
-      images.push(`/artworks/${work.category}/${work.name}/image_${i}.webp`);
+      if (!stats.isDirectory()) continue;
+
+      // 读取分类下的所有作品文件夹
+      const workFolders = await fs.readdir(categoryPath);
+
+      for (const workFolder of workFolders) {
+        const workPath = path.join(categoryPath, workFolder);
+        const workStats = await fs.stat(workPath);
+
+        if (!workStats.isDirectory()) continue;
+
+        // 扫描作品文件夹中的文件
+        const files = await fs.readdir(workPath);
+
+        // 查找图片
+        const images = files
+          .filter(f => f.match(/^image_\d+\.webp$/))
+          .sort((a, b) => {
+            const numA = parseInt(a.match(/\d+/)[0]);
+            const numB = parseInt(b.match(/\d+/)[0]);
+            return numA - numB;
+          })
+          .map(f => `/artworks/${category}/${workFolder}/${f}`);
+
+        if (images.length === 0) continue; // 没有图片的文件夹跳过
+
+        // 查找作者头像
+        const authorAvatar = files.find(f => f === 'author.jpg')
+          ? `/artworks/${category}/${workFolder}/author.jpg`
+          : null;
+
+        // 查找 Markdown 文件
+        const mdFile = files.find(f => f.endsWith('.md'));
+        let title = workFolder;
+        let description = '';
+        let isFeatured = false;
+
+        if (mdFile) {
+          try {
+            const mdPath = path.join(workPath, mdFile);
+            const mdContent = await fs.readFile(mdPath, 'utf-8');
+
+            // 解析 YAML front matter
+            const frontMatterMatch = mdContent.match(/^---\s*\n([\s\S]*?)\n---/);
+            if (frontMatterMatch) {
+              const frontMatter = frontMatterMatch[1];
+
+              // 提取标题
+              const titleMatch = frontMatter.match(/title:\s*(.+)/);
+              if (titleMatch) {
+                title = titleMatch[1].trim();
+              }
+
+              // 提取 featured 标记
+              const featuredMatch = frontMatter.match(/featured:\s*(true|false)/i);
+              if (featuredMatch && featuredMatch[1].toLowerCase() === 'true') {
+                isFeatured = true;
+              }
+            }
+
+            // 提取正文作为描述（去掉 front matter 后的第一段）
+            const contentWithoutFM = mdContent.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, '');
+            const firstParagraph = contentWithoutFM.trim().split('\n\n')[0];
+            description = firstParagraph.replace(/^#+\s*/, '').trim().substring(0, 200);
+          } catch (error) {
+            console.warn(`Failed to read markdown: ${mdFile}`, error);
+          }
+        }
+
+        // 检查是否有 .featured 文件
+        if (!isFeatured && files.includes('.featured')) {
+          isFeatured = true;
+        }
+
+        // 构造作品对象
+        const artwork = {
+          id: `${category}-${workFolder}`,
+          title: title || workFolder,
+          description: description || `这是一个${getCategoryLabel(category)}作品`,
+          category: category,
+          authorName: '作者',
+          authorEmail: 'author@example.com',
+          authorAvatar: authorAvatar,
+          images: images,
+          thumbnail: images[0],
+          createdAt: workStats.birthtime.toISOString(),
+          updatedAt: workStats.mtime.toISOString(),
+          featured: isFeatured,
+          status: 'published',
+          views: Math.floor(Math.random() * 10000) + 1000,
+          likes: Math.floor(Math.random() * 1000) + 100,
+          isFeatured: isFeatured
+        };
+
+        artworks.push(artwork);
+      }
     }
+  } catch (error) {
+    console.error('Scan directory error:', error);
+  }
 
-    mockArtworks.push({
-      id: `${work.category}-${work.name}`,
-      title: `${work.name} - ${getCategoryLabel(work.category)}`,
-      description: `这是一个精心设计的${getCategoryLabel(work.category)}作品`,
-      category: work.category,
-      authorName: `设计师${index + 1}`,
-      authorEmail: `designer${index + 1}@example.com`,
-      authorAvatar: `/artworks/${work.category}/${work.name}/author.jpg`,
-      images: images,
-      thumbnail: images[0], // 第一张图作为缩略图
-      createdAt: new Date(Date.now() - index * 86400000).toISOString(),
-      updatedAt: new Date(Date.now() - index * 86400000).toISOString(),
-      featured: index % 6 === 0, // 每6个作品中有1个精选
-      status: 'published',
-      views: Math.floor(Math.random() * 10000) + 1000,
-      likes: Math.floor(Math.random() * 1000) + 100,
-      isFeatured: index % 6 === 0
-    });
-  });
-
-  return mockArtworks;
+  return artworks;
 }
 
 // 获取分类标签
@@ -254,7 +221,9 @@ function getCategoryLabel(category) {
   const labels = {
     mecha: '机甲设计',
     concept: '概念设计',
-    illustration: '插画艺术'
+    illustration: '插画艺术',
+    '77777': '特别作品',
+    '新作品分类': '新作品'
   };
   return labels[category] || category;
 }
