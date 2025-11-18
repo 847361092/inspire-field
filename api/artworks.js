@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import { list } from '@vercel/blob';
 
 export default async function handler(req, res) {
   // 允许跨域
@@ -24,9 +25,14 @@ export default async function handler(req, res) {
     // 获取查询参数
     const { category, page = 1, limit = 12, search, featured, sort = 'latest' } = req.query;
 
-    // 扫描 public/artworks 目录
-    const artworksDir = path.join(process.cwd(), 'public', 'artworks');
-    const artworks = await scanArtworksDirectory(artworksDir);
+    // 同时从两个源获取作品
+    const [filesystemArtworks, blobArtworks] = await Promise.all([
+      scanArtworksDirectory(path.join(process.cwd(), 'public', 'artworks')),
+      fetchBlobArtworks()
+    ]);
+
+    // 合并两个源的作品
+    const artworks = [...filesystemArtworks, ...blobArtworks];
 
     // 筛选作品
     let filteredArtworks = artworks;
@@ -211,6 +217,57 @@ async function scanArtworksDirectory(artworksDir) {
     }
   } catch (error) {
     console.error('Scan directory error:', error);
+  }
+
+  return artworks;
+}
+
+// 从 Vercel Blob 获取用户上传的作品
+async function fetchBlobArtworks() {
+  const artworks = [];
+
+  try {
+    // 尝试读取 Blob 中的作品
+    const { blobs } = await list({
+      prefix: 'artworks/',
+      limit: 1000
+    });
+
+    // 筛选出 metadata.json 文件
+    const metadataFiles = blobs.filter(blob => blob.pathname.endsWith('metadata.json'));
+
+    for (const metaFile of metadataFiles) {
+      try {
+        // 获取元数据
+        const response = await fetch(metaFile.url);
+        const metadata = await response.json();
+
+        // 添加缩略图
+        if (metadata.images && metadata.images.length > 0) {
+          metadata.thumbnail = metadata.images[0];
+        }
+
+        // 检查是否精选
+        const pathParts = metaFile.pathname.split('/');
+        const folderName = pathParts[pathParts.length - 2];
+
+        let isFeatured = false;
+        const featuredFile = blobs.find(blob =>
+          blob.pathname === `artworks/${metadata.category}/${folderName}/.featured`
+        );
+        isFeatured = !!featuredFile;
+
+        metadata.isFeatured = isFeatured || metadata.featured || false;
+        metadata.source = 'blob'; // 标记来源
+
+        artworks.push(metadata);
+      } catch (error) {
+        console.error(`Error loading blob metadata from ${metaFile.pathname}:`, error);
+      }
+    }
+  } catch (error) {
+    // Blob 读取失败不影响文件系统的作品显示
+    console.warn('Blob fetch failed, using filesystem only:', error.message);
   }
 
   return artworks;
