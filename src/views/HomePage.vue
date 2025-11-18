@@ -274,7 +274,7 @@ const sortOptions = [
 ]
 
 const activeTab = ref('all')
-const activeSort = ref('community')
+const activeSort = ref('latest')
 const isLoading = ref(false)
 const isFullscreen = ref(false)
 const artworks = ref<any[]>([])
@@ -712,6 +712,9 @@ const handleUploadSuccess = async (artworkId: string) => {
 
   // 刷新作品列表
   await loadArtworksFromAPI()
+
+  // 自动切换到"最新"排序，让用户看到刚上传的作品
+  activeSort.value = 'latest'
 
   // 可选：跳转到新作品详情页
   // router.push(`/artwork/${artworkId}`)
