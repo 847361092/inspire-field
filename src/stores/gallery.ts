@@ -379,6 +379,24 @@ export const useGalleryStore = defineStore('gallery', () => {
     sessionStorage.removeItem('gallery_scroll_positions')
   }
 
+  const sanitizeWorkName = (name: string) => {
+    const trimmed = name.trim()
+    if (!trimmed) return `work-${Date.now()}`
+    return trimmed.replace(/[\\/]/g, '-').replace(/\s+/g, '_')
+  }
+
+  const getFileExtension = (file: File) => {
+    const nameExt = file.name.split('.').pop()?.toLowerCase()
+    if (nameExt) {
+      if (nameExt === 'jpeg') return 'jpg'
+      return nameExt
+    }
+    if (file.type === 'image/png') return 'png'
+    if (file.type === 'image/jpeg') return 'jpg'
+    if (file.type === 'image/webp') return 'webp'
+    return 'webp'
+  }
+
   // 上传作品
   const uploadArtwork = async (formData: {
     workName: string
@@ -396,84 +414,129 @@ export const useGalleryStore = defineStore('gallery', () => {
     error.value = null
 
     try {
-      // 1. 准备文件列表
-      const files = [
-        ...formData.images.map((img, i) => ({
-          name: `image_${i + 1}.webp`,
-          size: img.size,
-          type: img.type
-        })),
-        formData.markdownFile && {
-          name: `${formData.workName}.md`,
-          size: formData.markdownFile.size,
-          type: formData.markdownFile.type
-        },
-        formData.authorAvatar && {
-          name: 'author.jpg',
-          size: formData.authorAvatar.size,
-          type: formData.authorAvatar.type
-        }
-      ].filter(Boolean)
+      const normalizedWorkName = sanitizeWorkName(formData.workName)
+      const artworkId = `${formData.category}-${normalizedWorkName}`
+      const basePath = `artworks/${formData.category}/${normalizedWorkName}`
 
-      // 2. 获取上传配置
-      const presignRes = await fetch('/api/artworks/presign', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          category: formData.category,
-          workName: formData.workName,
-          files,
-          metadata: {
-            title: formData.title,
-            description: formData.description,
-            authorName: formData.authorName,
-            tags: formData.tags,
-            featured: formData.featured
-          }
-        })
+      const preparedImages = formData.images.map((file, index) => {
+        const ext = getFileExtension(file)
+        const fileName = `image_${index + 1}.${ext}`
+        return {
+          file,
+          fileName,
+          blobPath: `${basePath}/${fileName}`
+        }
       })
 
-      if (!presignRes.ok) {
-        throw new Error('Failed to prepare upload')
+      const markdownFile =
+        formData.markdownFile ||
+        new File(
+          [
+            [
+              '---',
+              `title: ${formData.title}`,
+              `category: ${formData.category}`,
+              `featured: ${formData.featured}`,
+              `author: ${formData.authorName || '未知作者'}`,
+              `tags: [${formData.tags.join(', ')}]`,
+              '---',
+              '',
+              formData.description || '暂无描述'
+            ].join('\n')
+          ],
+          `${normalizedWorkName}.md`,
+          { type: 'text/markdown' }
+        )
+
+      const uploads = [
+        ...preparedImages,
+        {
+          file: markdownFile,
+          fileName: markdownFile.name,
+          blobPath: `${basePath}/${markdownFile.name}`
+        }
+      ]
+
+      if (formData.authorAvatar) {
+        uploads.push({
+          file: formData.authorAvatar,
+          fileName: 'author.jpg',
+          blobPath: `${basePath}/author.jpg`
+        })
       }
 
-      const { uploadUrls, metadata, artworkId } = await presignRes.json()
-
-      // 3. 上传所有文件（使用 @vercel/blob 客户端）
       const { upload } = await import('@vercel/blob/client')
 
-      const filesToUpload = [
-        ...formData.images,
-        formData.markdownFile,
-        formData.authorAvatar
-      ].filter(Boolean) as (File | Blob)[]
-
-      await Promise.all(
-        filesToUpload.map(async (file: File | Blob, index: number) => {
-          const { blobPath } = uploadUrls[index]
-          await upload(blobPath, file, {
+      const uploadedAssets = await Promise.all(
+        uploads.map(async target => {
+          const result = await upload(target.blobPath, target.file, {
             access: 'public',
             handleUploadUrl: '/api/artworks/upload-handler'
           })
+          return {
+            ...target,
+            url: result.url,
+            pathname: result.pathname
+          }
         })
       )
 
-      // 4. 上传 metadata.json
-      const metadataBlob = new Blob([JSON.stringify(metadata, null, 2)], {
-        type: 'application/json'
-      })
+      if (formData.featured) {
+        await upload(
+          `${basePath}/.featured`,
+          new Blob(['featured'], { type: 'text/plain' }),
+          {
+            access: 'public',
+            handleUploadUrl: '/api/artworks/upload-handler'
+          }
+        )
+      }
+
+      const imageUploads = uploadedAssets.filter(asset =>
+        asset.fileName.startsWith('image_')
+      )
+      const markdownUpload = uploadedAssets.find(asset =>
+        asset.fileName.endsWith('.md')
+      )
+      const avatarUpload = uploadedAssets.find(
+        asset => asset.fileName === 'author.jpg'
+      )
+
+      const now = new Date().toISOString()
+      const metadataPayload = {
+        id: artworkId,
+        workName: normalizedWorkName,
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        authorName: formData.authorName,
+        tags: formData.tags,
+        featured: formData.featured,
+        isFeatured: formData.featured,
+        images: imageUploads.map(asset => asset.url),
+        imageCount: imageUploads.length,
+        thumbnail: imageUploads[0]?.url || '',
+        authorAvatar: avatarUpload?.url || null,
+        markdownFile: markdownUpload?.url || null,
+        createdAt: now,
+        updatedAt: now,
+        views: 0,
+        likes: 0,
+        source: 'blob'
+      }
 
       await upload(
-        `artworks/${formData.category}/${formData.workName}/metadata.json`,
-        metadataBlob,
+        `${basePath}/metadata.json`,
+        new Blob([JSON.stringify(metadataPayload, null, 2)], {
+          type: 'application/json'
+        }),
         {
           access: 'public',
           handleUploadUrl: '/api/artworks/upload-handler'
         }
       )
 
-      // 5. 重新加载作品列表
-      artworks.value = [] // 清空缓存
+      artworks.value = []
       await fetchArtworks()
 
       return { success: true, artworkId }

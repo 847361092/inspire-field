@@ -241,10 +241,33 @@ async function fetchBlobArtworks() {
         // 获取元数据
         const response = await fetch(metaFile.url);
         const metadata = await response.json();
+        const blobOrigin = new URL(metaFile.url).origin;
+        const toAbsoluteUrl = (path) => {
+          if (!path) return null;
+          if (typeof path === 'string' && /^https?:\/\//i.test(path)) {
+            return path;
+          }
+          const normalized = typeof path === 'string' ? path.replace(/^\/+/, '') : '';
+          return normalized ? `${blobOrigin}/${normalized}` : null;
+        };
 
         // 添加缩略图
         if (metadata.images && metadata.images.length > 0) {
-          metadata.thumbnail = metadata.images[0];
+          metadata.images = metadata.images
+            .map((img) => toAbsoluteUrl(img) || img)
+            .filter(Boolean);
+          metadata.thumbnail = toAbsoluteUrl(metadata.thumbnail) || metadata.images[0];
+        } else if (metadata.thumbnail) {
+          metadata.thumbnail = toAbsoluteUrl(metadata.thumbnail);
+        }
+        if (metadata.authorAvatar) {
+          metadata.authorAvatar = toAbsoluteUrl(metadata.authorAvatar);
+        }
+        if (metadata.markdownFile) {
+          metadata.markdownFile = toAbsoluteUrl(metadata.markdownFile);
+        }
+        if (!metadata.imageCount && metadata.images) {
+          metadata.imageCount = metadata.images.length;
         }
 
         // 检查是否精选

@@ -153,23 +153,9 @@
     
     <!-- 悬浮操作按钮（仅PC端显示） -->
     <div class="fab-container" v-if="!isMobile">
-      <button class="fab-btn main" @click="toggleFab" :class="{ active: fabExpanded }">
-        <span class="fab-icon" :style="{ transform: fabExpanded ? 'rotate(90deg)' : 'rotate(0)', transition: 'transform 0.3s' }">⚙️</span>
+      <button class="fab-btn main" @click="handleUpload" title="上传作品">
+        <span class="fab-icon">⚙️</span>
       </button>
-      <transition-group name="fab">
-        <button v-if="fabExpanded" class="fab-btn sub" key="upload" @click="handleUpload" title="上传作品">
-          <span class="fab-icon">📤</span>
-        </button>
-        <button v-if="fabExpanded" class="fab-btn sub" key="filter" @click="handleFilter" title="高级筛选">
-          <span class="fab-icon">🔍</span>
-        </button>
-        <button v-if="fabExpanded" class="fab-btn sub" key="fullscreen" @click="toggleFullscreen" title="全屏模式">
-          <span class="fab-icon">{{ isFullscreen ? '✖' : '🔳' }}</span>
-        </button>
-        <button v-if="fabExpanded" class="fab-btn sub" key="debug" @click="handleDebug" title="调试信息">
-          <span class="fab-icon">🐛</span>
-        </button>
-      </transition-group>
     </div>
     
     <!-- 回到顶部按钮 -->
@@ -234,13 +220,51 @@ const viewModes = [
 
 const viewMode = ref('waterfall')
 
-// 筛选标签 - 动态获取
+// 分类显示名称映射
+const CATEGORY_LABEL_MAP: Record<string, string> = {
+  mecha: '机甲设计',
+  concept: '概念艺术',
+  illustration: '插画作品',
+  '77777': '特别作品',
+  '新作品分类': '新作品分类'
+}
+
+const formatCategoryLabel = (value: string, count?: number) => {
+  const label = CATEGORY_LABEL_MAP[value] || value
+  return typeof count === 'number' ? `${label} (${count})` : label
+}
+
 const filterTabs = ref([
   { label: '全部', value: 'all' },
-  { label: '机甲', value: 'mecha' },
-  { label: '概念', value: 'concept' },
-  { label: '插画', value: 'illustration' }
+  { label: formatCategoryLabel('mecha'), value: 'mecha' },
+  { label: formatCategoryLabel('concept'), value: 'concept' },
+  { label: formatCategoryLabel('illustration'), value: 'illustration' }
 ])
+
+const syncFilterTabsWithArtworks = () => {
+  if (!artworks.value.length) return
+
+  const counts: Record<string, number> = artworks.value.reduce((acc, artwork) => {
+    const key = artwork.category || 'uncategorized'
+    acc[key] = (acc[key] || 0) + 1
+    return acc
+  }, {} as Record<string, number>)
+
+  const dynamicTabs = Object.entries(counts)
+    .sort((a, b) => (b[1] || 0) - (a[1] || 0))
+    .map(([value, count]) => ({
+      value,
+      label: formatCategoryLabel(value, count)
+    }))
+
+  filterTabs.value = [{ label: '全部', value: 'all' }, ...dynamicTabs]
+
+  // 如果当前选中的分类已不存在，重置为“全部”
+  const exists = filterTabs.value.some(tab => tab.value === activeTab.value)
+  if (!exists) {
+    activeTab.value = 'all'
+  }
+}
 
 // 排序选项
 const sortOptions = [
@@ -253,7 +277,6 @@ const activeTab = ref('all')
 const activeSort = ref('community')
 const isLoading = ref(false)
 const isFullscreen = ref(false)
-const fabExpanded = ref(false)
 const artworks = ref<any[]>([])
 const showUploadModal = ref(false)
 
@@ -679,25 +702,8 @@ const clearSearchMode = () => {
   galleryStore.setCurrentPage(1)
 }
 
-// 悬浮按钮控制
-const toggleFab = () => {
-  fabExpanded.value = !fabExpanded.value
-  
-  // 移动端震动反馈
-  if ('vibrate' in navigator && isMobile.value) {
-    navigator.vibrate(10)
-  }
-}
-
-
-const handleFilter = () => {
-  console.log('高级筛选')
-  fabExpanded.value = false
-}
-
 const handleUpload = () => {
   showUploadModal.value = true
-  fabExpanded.value = false
 }
 
 const handleUploadSuccess = async (artworkId: string) => {
@@ -709,14 +715,6 @@ const handleUploadSuccess = async (artworkId: string) => {
 
   // 可选：跳转到新作品详情页
   // router.push(`/artwork/${artworkId}`)
-}
-
-const handleDebug = () => {
-  showDebugInfo()
-  copyDebugInfo().then(() => {
-    alert('调试信息已显示在控制台并复制到剪贴板\n请将信息发送给开发者进行问题排查')
-  })
-  fabExpanded.value = false
 }
 
 // 全屏模式
@@ -752,7 +750,6 @@ const toggleFullscreen = async () => {
       }
       isFullscreen.value = false
     }
-    fabExpanded.value = false
   } catch (error) {
     console.error('全屏模式切换失败:', error)
   }
@@ -1097,16 +1094,19 @@ const loadArtworksFromAPI = async () => {
       
       // 只使用API作品，不再合并静态作品避免重复
       artworks.value = apiArtworks
+      syncFilterTabsWithArtworks()
       console.log(`✅ 加载了 ${apiArtworks.length} 个作品`)
     } else {
       console.log('API响应失败，使用静态数据')
       // 如果API失败，从本地文件系统生成作品
       artworks.value = await generateArtworksFromFileSystem()
+      syncFilterTabsWithArtworks()
     }
   } catch (error) {
     console.error('加载作品失败:', error)
     console.log('使用静态数据作为备选')
     artworks.value = generateArtworks()
+    syncFilterTabsWithArtworks()
   } finally {
     isLoading.value = false
   }
