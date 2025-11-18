@@ -75,7 +75,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTransitionStore } from '@/stores/transition'
 import { useGalleryStore } from '@/stores/gallery'
@@ -101,36 +101,39 @@ interface FeaturedItem {
   realDescription?: string
 }
 
+const FEATURED_DISPLAY_COUNT = 10
+
+const toFeaturedItem = (artwork: any): FeaturedItem => ({
+  id: artwork.id,
+  title: artwork.title,
+  category: getCategoryLabel(artwork.category),
+  author: artwork.author.name,
+  image: artwork.thumbnail,
+  description: artwork.description || getDefaultDescription(artwork.category),
+  realDescription: artwork.description
+})
+
 // 从API数据中获取精选作品
 const featuredItems = computed(() => {
-  // 筛选出标记为精选的作品
-  const featured = galleryStore.artworks.filter(artwork => artwork.isFeatured)
+  if (!galleryStore.artworks.length) return []
   
-  // 转换为组件需要的格式
-  const convertedFeatured = featured.map(artwork => ({
-    id: artwork.id,
-    title: artwork.title,
-    category: getCategoryLabel(artwork.category),
-    author: artwork.author.name,
-    image: artwork.thumbnail,
-    description: artwork.description || getDefaultDescription(artwork.category),
-    realDescription: artwork.description
-  }))
+  const featured = galleryStore.artworks
+    .filter(artwork => artwork.isFeatured)
+    .map(toFeaturedItem)
   
-  // 如果没有精选作品，返回前6个热门作品
-  if (convertedFeatured.length === 0) {
-    return galleryStore.artworks.slice(0, 6).map(artwork => ({
-      id: artwork.id,
-      title: artwork.title,
-      category: getCategoryLabel(artwork.category),
-      author: artwork.author.name,
-      image: artwork.thumbnail,
-      description: artwork.description || getDefaultDescription(artwork.category),
-      realDescription: artwork.description
-    }))
+  const needed = FEATURED_DISPLAY_COUNT - featured.length
+  if (needed <= 0) {
+    return featured.slice(0, FEATURED_DISPLAY_COUNT)
   }
   
-  return convertedFeatured
+  const usedIds = new Set(featured.map(item => item.id))
+  const fallbackItems = galleryStore.artworks
+    .filter(artwork => !usedIds.has(artwork.id))
+    .slice(0, needed)
+    .map(toFeaturedItem)
+  
+  const combined = [...featured, ...fallbackItems]
+  return combined.slice(0, FEATURED_DISPLAY_COUNT)
 })
 
 // 获取分类显示名称
@@ -192,7 +195,10 @@ const handleItemClick = (item: any) => {
 const updateScrollPosition = () => {
   if (!scrollContainer.value) return
   scrollPosition.value = scrollContainer.value.scrollLeft
-  maxScroll.value = scrollContainer.value.scrollWidth - scrollContainer.value.offsetWidth
+  maxScroll.value = Math.max(
+    0,
+    scrollContainer.value.scrollWidth - scrollContainer.value.offsetWidth
+  )
 }
 
 // 鼠标拖拽滚动
@@ -238,6 +244,12 @@ const handleWheel = (e: WheelEvent) => {
   // 直接设置scrollLeft，避免动画冲突
   scrollContainer.value.scrollLeft += scrollAmount
 }
+
+watch(featuredItems, () => {
+  nextTick(() => {
+    updateScrollPosition()
+  })
+})
 
 onMounted(async () => {
   // 获取真实的作品数据

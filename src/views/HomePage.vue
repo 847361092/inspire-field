@@ -955,16 +955,34 @@ const fetchCategories = async () => {
     const data = await response.json()
     
     if (data.success && data.categories) {
-      // 清空现有分类，保留"全部"
-      filterTabs.value = [{ label: '全部', value: 'all' }]
-      
-      // 添加动态分类
-      data.categories.forEach((cat: any) => {
-        filterTabs.value.push({
-          label: cat.name + (cat.count ? ` (${cat.count})` : ''),
-          value: cat.id
+      const dynamicTabs = data.categories
+        .map((cat: any) => {
+          const value = cat.value ?? cat.id ?? cat.slug
+          const label = cat.label ?? cat.name ?? cat.title
+          
+          if (!value || !label) return null
+          
+          const countSuffix = cat.count ? ` (${cat.count})` : ''
+          return {
+            label: `${label}${countSuffix}`,
+            value
+          }
         })
-      })
+        .filter(Boolean) as Array<{ label: string; value: string }>
+
+      // 保证至少包含默认分类
+      filterTabs.value = [
+        { label: '全部', value: 'all' },
+        ...(
+          dynamicTabs.length > 0
+            ? dynamicTabs
+            : [
+                { label: '机甲设计', value: 'mecha' },
+                { label: '概念艺术', value: 'concept' },
+                { label: '插画作品', value: 'illustration' }
+              ]
+        )
+      ]
     }
   } catch (error) {
     console.error('获取分类失败:', error)
