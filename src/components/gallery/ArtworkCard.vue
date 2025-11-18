@@ -82,6 +82,7 @@ interface Artwork {
   thumbnail: string
   width: number
   height: number
+  category: string
   author: {
     name: string
     avatar: string
@@ -126,21 +127,32 @@ const onImageLoad = () => {
 const onImageError = (e: Event) => {
   const img = e.target as HTMLImageElement
   imageErrorCount.value++
-  
+
+  // 🔍 调试日志：记录图片加载失败
+  console.error(`[ArtworkCard] 图片加载失败 (尝试 ${imageErrorCount.value}/3):`, {
+    url: img.src,
+    artworkId: props.artwork.id,
+    artworkTitle: props.artwork.title,
+    category: props.artwork.category
+  })
+
   // 防止无限循环
   if (imageErrorCount.value > 2) {
+    console.warn(`[ArtworkCard] 所有备用方案均失败，隐藏图片:`, props.artwork.title)
     // 使用纯色占位图
     img.style.display = 'none'
     imageLoaded.value = false
     return
   }
-  
+
   // 尝试备用图片路径
   if (imageErrorCount.value === 1) {
     // 尝试使用默认图片
+    console.log('[ArtworkCard] 尝试备用方案 1: /images/default-avatar.jpg')
     img.src = '/images/default-avatar.jpg'
   } else {
     // 最后使用占位图
+    console.log('[ArtworkCard] 尝试备用方案 2: Base64 占位图')
     img.src = `data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMWExYTFhIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMjAiIGZpbGw9IiM2NjYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZTwvdGV4dD48L3N2Zz4=`
   }
 }

@@ -37,7 +37,7 @@ interface Artwork {
   thumbnail: string   // 缩略图地址
   width: number       // 图片原始宽度
   height: number      // 图片原始高度
-  category?: string   // 作品分类（机甲/概念/插画）
+  category: string    // 作品分类（机甲/概念/插画）
   author: {           // 作者信息
     name: string      // 作者名字
     avatar: string    // 作者头像
@@ -124,17 +124,20 @@ const generateMockData = (): Artwork[] => {
     { name: 'David Li', avatar: 'https://i.pravatar.cc/150?img=5' }
   ]
   
+  const categories = ['mecha', 'concept', 'illustration']
+
   return Array.from({ length: 20 }, (_, i) => {
     const width = 400
     const height = 300 + Math.random() * 300 // 随机高度
     const keyword = keywords[Math.floor(Math.random() * keywords.length)]
-    
+
     return {
       id: `artwork-${i + 1}`,
       title: titles[Math.floor(Math.random() * titles.length)],
       thumbnail: `https://source.unsplash.com/random/${width}x${Math.floor(height)}/?${keyword}`,
       width,
       height: Math.floor(height),
+      category: categories[i % categories.length],
       author: authors[Math.floor(Math.random() * authors.length)],
       views: Math.floor(Math.random() * 50000) + 1000,
       likes: Math.floor(Math.random() * 5000) + 100

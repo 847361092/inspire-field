@@ -347,7 +347,7 @@ const generateArtworks = () => {
     works.push({
       id: `${mapping.category}-${mapping.workName}`,
       title: `${mapping.workName} - ${getCategoryLabel(mapping.category)}`,
-      thumbnail: `/artworks/${mapping.category}/${encodeURIComponent(mapping.workName)}/image_1.${mapping.ext}`,
+      thumbnail: `/artworks/${mapping.category}/${mapping.workName}/image_1.${mapping.ext}`,
       category: mapping.category,
       workGroup: mapping.workName,
       author: {
@@ -1058,19 +1058,25 @@ const loadArtworksFromAPI = async () => {
     // 使用相对路径，Vite会自动代理到生产API
     const apiUrl = '/api/artworks'
 
-    console.log('正在从API加载作品...')
-    
+    console.log('🔍 [HomePage] 正在从API加载作品...', { apiUrl })
+
     // 模拟最小加载时间，让骨架屏显示
     const [response] = await Promise.all([
       fetch(apiUrl),
       new Promise(resolve => setTimeout(resolve, 800))
     ])
-    
+
     const data = await response.json()
-    
+
+    console.log('🔍 [HomePage] API 响应数据:', {
+      success: data.success,
+      artworkCount: data.artworks?.length || 0,
+      firstArtwork: data.artworks?.[0]
+    })
+
     if (data.success && data.artworks) {
-      console.log('API返回的作品:', data.artworks)
-      
+      console.log(`✅ [HomePage] API返回 ${data.artworks.length} 个作品`)
+
       // 转换API数据为组件需要的格式，确保正确读取作者信息
       const apiArtworks = data.artworks.map((artwork: any) => ({
         id: artwork.id,
@@ -1093,25 +1099,27 @@ const loadArtworksFromAPI = async () => {
         isFromAPI: true // 标记为来自API的作品
       }))
       
-      console.log('转换后的作品数据:', apiArtworks)
-      
+      console.log('🔍 [HomePage] 转换后的作品数据 (前3个):', apiArtworks.slice(0, 3))
+      console.log('🔍 [HomePage] 第一个作品的 thumbnail:', apiArtworks[0]?.thumbnail)
+
       // 只使用API作品，不再合并静态作品避免重复
       artworks.value = apiArtworks
       syncFilterTabsWithArtworks()
-      console.log(`✅ 加载了 ${apiArtworks.length} 个作品`)
+      console.log(`✅ [HomePage] 成功加载 ${apiArtworks.length} 个作品`)
     } else {
-      console.log('API响应失败，使用静态数据')
+      console.warn('⚠️ [HomePage] API响应失败，使用静态数据')
       // 如果API失败，从本地文件系统生成作品
       artworks.value = await generateArtworksFromFileSystem()
       syncFilterTabsWithArtworks()
     }
   } catch (error) {
-    console.error('加载作品失败:', error)
-    console.log('使用静态数据作为备选')
+    console.error('❌ [HomePage] 加载作品失败:', error)
+    console.log('🔄 [HomePage] 使用静态数据作为备选')
     artworks.value = generateArtworks()
     syncFilterTabsWithArtworks()
   } finally {
     isLoading.value = false
+    console.log('🏁 [HomePage] 数据加载完成，isLoading =', isLoading.value)
   }
   
   // 加载完成后触发动画

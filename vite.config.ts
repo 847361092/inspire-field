@@ -19,28 +19,54 @@ const mockApiMiddleware = () => {
             res.setHeader('Content-Type', 'application/json')
             res.statusCode = 200
 
+            // 生成所有18个作品的数据
+            const generateArtworks = () => {
+              const artworks = []
+
+              // 分类分配规则（根据实际文件结构）
+              const categoryMap: { [key: string]: string } = {
+                '001': 'mecha', '004': 'mecha', '007': 'mecha',
+                '010': 'mecha', '013': 'mecha', '016': 'mecha',
+                '002': 'concept', '005': 'concept', '008': 'concept',
+                '011': 'concept', '014': 'concept', '017': 'concept',
+                '003': 'illustration', '006': 'illustration', '009': 'illustration',
+                '012': 'illustration', '015': 'illustration', '018': 'illustration'
+              }
+
+              // 特殊作品（只有4张图片）
+              const specialWorks = ['010', '018']
+
+              for (let i = 1; i <= 18; i++) {
+                const workNum = i.toString().padStart(3, '0')
+                const category = categoryMap[workNum]
+                const imageCount = specialWorks.includes(workNum) ? 4 : 5
+                const images = []
+
+                // 生成图片路径
+                for (let j = 1; j <= imageCount; j++) {
+                  images.push(`/artworks/${category}/作品${workNum}/image_${j}.webp`)
+                }
+
+                artworks.push({
+                  id: i.toString(),
+                  title: `作品${workNum}`,
+                  category: category,
+                  thumbnail: `/artworks/${category}/作品${workNum}/image_1.webp`,
+                  images: images,
+                  authorName: '数字艺术家',
+                  description: `${category === 'mecha' ? '机甲设计' : category === 'concept' ? '概念艺术' : '插画'}作品`,
+                  createdAt: new Date(2024, 0, i).toISOString(),
+                  imageCount: imageCount
+                })
+              }
+
+              return artworks
+            }
+
             // 返回模拟的作品列表数据
             const mockData = {
               success: true,
-              artworks: [
-                {
-                  id: '1',
-                  title: '作品001',
-                  category: 'mecha',
-                  thumbnail: '/artworks/mecha/作品001/image_1.webp',
-                  images: [
-                    '/artworks/mecha/作品001/image_1.webp',
-                    '/artworks/mecha/作品001/image_2.webp',
-                    '/artworks/mecha/作品001/image_3.webp',
-                    '/artworks/mecha/作品001/image_4.webp',
-                    '/artworks/mecha/作品001/image_5.webp'
-                  ],
-                  authorName: '数字艺术家',
-                  description: '机甲设计作品',
-                  createdAt: new Date().toISOString(),
-                  imageCount: 5
-                }
-              ]
+              artworks: generateArtworks()
             }
 
             res.end(JSON.stringify(mockData))
