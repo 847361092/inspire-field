@@ -450,57 +450,44 @@ const filteredArtworks = computed(() => {
   
   // 排序
   if (activeSort.value === 'latest') {
-    console.log('🔄 执行最新发布排序，原数据量:', result.length)
     result = [...result].sort((a, b) => {
       // 都有createdAt时，直接按时间排序
       if (a.createdAt && b.createdAt) {
         const timeA = new Date(a.createdAt).getTime()
         const timeB = new Date(b.createdAt).getTime()
-        
+
         // 检查时间是否有效
         if (!isNaN(timeA) && !isNaN(timeB)) {
-          const diff = timeB - timeA
-          if (diff !== 0) {
-            console.log(`⏰ 时间排序: ${a.title}(${new Date(timeA).toLocaleString()}) vs ${b.title}(${new Date(timeB).toLocaleString()}) = ${diff > 0 ? 'b在前' : 'a在前'}`)
-            return diff  // 新的在前
-          }
+          return timeB - timeA  // 新的在前
         }
       }
-      
+
       // 只有一个有时间的情况
-      if (a.createdAt && !b.createdAt) {
-        console.log(`✅ ${a.title} 有时间戳，排在 ${b.title} 前面`)
-        return -1
-      }
-      if (!a.createdAt && b.createdAt) {
-        console.log(`✅ ${b.title} 有时间戳，排在 ${a.title} 前面`)
-        return 1
-      }
-      
+      if (a.createdAt && !b.createdAt) return -1
+      if (!a.createdAt && b.createdAt) return 1
+
       // 都没有时间时，保持原始顺序（API返回的顺序）
       return 0
     })
-    
-    // 显示排序结果
-    console.log('📋 排序后前5个作品:', result.slice(0, 5).map(a => {
-      const date = a.createdAt ? new Date(a.createdAt) : null
-      return `${a.title} (${date ? date.toLocaleString('zh-CN') : '无时间'})`
-    }))
+
+    // 显示排序结果（仅开发环境）
+    if (import.meta.env.DEV) {
+      console.log('📋 最新排序完成，前3个:', result.slice(0, 3).map(a => a.title))
+    }
   } else if (activeSort.value === 'trending') {
     // 热门趋势 - 完全随机排序
-    console.log('🎲 热门趋势：随机排序')
     result = [...result].sort(() => Math.random() - 0.5)
   } else if (activeSort.value === 'community') {
     // 社区精选 - 按图片数量排序（数量多的在前）
-    console.log('⭐ 社区精选：按图片数量排序')
     result = [...result].sort((a, b) => {
-      // 获取图片数量（API作品有imageCount，静态作品没有）
       const countA = a.imageCount || (a.images ? a.images.length : 1)
       const countB = b.imageCount || (b.images ? b.images.length : 1)
-      console.log(`比较: ${a.title}(${countA}张) vs ${b.title}(${countB}张)`)
       return countB - countA // 数量多的排在前面
     })
-    console.log('📊 排序后前5个作品:', result.slice(0, 5).map(a => `${a.title}(${a.imageCount || 1}张)`))
+
+    if (import.meta.env.DEV) {
+      console.log('📊 社区精选排序完成，前3个:', result.slice(0, 3).map(a => a.title))
+    }
   }
   
   return result
