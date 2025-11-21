@@ -9,10 +9,12 @@
   "scripts": {
     "dev": "vite",
     "dev:vercel": "vercel dev",
+    "prebuild": "node scripts/generate-manifest.js",
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
+    "generate-manifest": "node scripts/generate-manifest.js",
     "artwork": "node artwork-manager.cjs",
     "artwork:create": "node artwork-manager.cjs create",
     "artwork:list": "node artwork-manager.cjs list",
