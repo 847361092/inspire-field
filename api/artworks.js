@@ -25,9 +25,27 @@ export default async function handler(req, res) {
     // 获取查询参数
     const { category, page = 1, limit = 12, search, featured, sort = 'latest' } = req.query;
 
+    // 尝试多个可能的路径（适配 Vercel 部署环境）
+    const possiblePaths = [
+      path.join(process.cwd(), 'api', 'public', 'artworks'), // Vercel Serverless Function
+      path.join(process.cwd(), 'public', 'artworks'),        // 本地开发
+      path.join(__dirname, 'public', 'artworks'),            // 备用路径
+    ];
+
+    let artworksPath = possiblePaths[0];
+    for (const p of possiblePaths) {
+      try {
+        await fs.access(p);
+        artworksPath = p;
+        break;
+      } catch (e) {
+        // 路径不存在，尝试下一个
+      }
+    }
+
     // 同时从两个源获取作品
     const [filesystemArtworks, blobArtworks] = await Promise.all([
-      scanArtworksDirectory(path.join(process.cwd(), 'public', 'artworks')),
+      scanArtworksDirectory(artworksPath),
       fetchBlobArtworks()
     ]);
 
