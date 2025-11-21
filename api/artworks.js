@@ -25,29 +25,50 @@ export default async function handler(req, res) {
     // 获取查询参数
     const { category, page = 1, limit = 12, search, featured, sort = 'latest' } = req.query;
 
+    // 详细诊断日志
+    console.log('=== Artworks API Debug ===');
+    console.log('Environment:', process.env.VERCEL ? 'Vercel' : 'Local');
+    console.log('CWD:', process.cwd());
+    console.log('__dirname:', __dirname);
+
     // 尝试多个可能的路径（适配 Vercel 部署环境）
     const possiblePaths = [
-      path.join(process.cwd(), 'api', 'public', 'artworks'), // Vercel Serverless Function
-      path.join(process.cwd(), 'public', 'artworks'),        // 本地开发
-      path.join(__dirname, 'public', 'artworks'),            // 备用路径
+      path.join(process.cwd(), 'public', 'artworks'),        // 优先尝试标准路径
+      path.join(__dirname, '..', 'public', 'artworks'),      // 相对于 api 目录
+      path.join(process.cwd(), 'api', 'public', 'artworks'), // 备用路径
     ];
 
-    let artworksPath = possiblePaths[0];
+    let artworksPath = null;
+    let pathErrors = [];
+
     for (const p of possiblePaths) {
       try {
         await fs.access(p);
         artworksPath = p;
+        console.log('✅ Found artworks path:', p);
+
+        // 读取目录内容用于诊断
+        const contents = await fs.readdir(p);
+        console.log('Directory contents:', contents);
         break;
       } catch (e) {
-        // 路径不存在，尝试下一个
+        pathErrors.push({ path: p, error: e.message });
+        console.log('❌ Path not accessible:', p, e.message);
       }
+    }
+
+    if (!artworksPath) {
+      console.error('Failed to find artworks directory. Tried paths:', pathErrors);
     }
 
     // 同时从两个源获取作品
     const [filesystemArtworks, blobArtworks] = await Promise.all([
-      scanArtworksDirectory(artworksPath),
+      artworksPath ? scanArtworksDirectory(artworksPath) : Promise.resolve([]),
       fetchBlobArtworks()
     ]);
+
+    console.log('Filesystem artworks count:', filesystemArtworks.length);
+    console.log('Blob artworks count:', blobArtworks.length);
 
     // 合并两个源的作品
     const artworks = [...filesystemArtworks, ...blobArtworks];
