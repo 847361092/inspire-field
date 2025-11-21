@@ -27,6 +27,13 @@ export default async function handler(req, res) {
   }
 
   try {
+    // 获取当前部署的基础 URL
+    const protocol = req.headers['x-forwarded-proto'] || 'http';
+    const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:5173';
+    const baseUrl = `${protocol}://${host}`;
+
+    console.log('Base URL:', baseUrl);
+
     // 获取查询参数
     const { category, page = 1, limit = 12, search, featured, sort = 'latest' } = req.query;
 
@@ -68,7 +75,7 @@ export default async function handler(req, res) {
 
     // 同时从两个源获取作品
     const [filesystemArtworks, blobArtworks] = await Promise.all([
-      artworksPath ? scanArtworksDirectory(artworksPath) : Promise.resolve([]),
+      artworksPath ? scanArtworksDirectory(artworksPath, baseUrl) : Promise.resolve([]),
       fetchBlobArtworks()
     ]);
 
@@ -151,7 +158,7 @@ export default async function handler(req, res) {
 }
 
 // 扫描作品目录
-async function scanArtworksDirectory(artworksDir) {
+async function scanArtworksDirectory(artworksDir, baseUrl = '') {
   const artworks = [];
 
   try {
@@ -176,7 +183,7 @@ async function scanArtworksDirectory(artworksDir) {
         // 扫描作品文件夹中的文件
         const files = await fs.readdir(workPath);
 
-        // 查找图片
+        // 查找图片 - 使用完整 URL
         const images = files
           .filter(f => f.match(/^image_\d+\.webp$/))
           .sort((a, b) => {
@@ -184,13 +191,13 @@ async function scanArtworksDirectory(artworksDir) {
             const numB = parseInt(b.match(/\d+/)[0]);
             return numA - numB;
           })
-          .map(f => `/artworks/${category}/${workFolder}/${f}`);
+          .map(f => `${baseUrl}/artworks/${category}/${workFolder}/${f}`);
 
         if (images.length === 0) continue; // 没有图片的文件夹跳过
 
-        // 查找作者头像
+        // 查找作者头像 - 使用完整 URL
         const authorAvatar = files.find(f => f === 'author.jpg')
-          ? `/artworks/${category}/${workFolder}/author.jpg`
+          ? `${baseUrl}/artworks/${category}/${workFolder}/author.jpg`
           : null;
 
         // 查找 Markdown 文件
