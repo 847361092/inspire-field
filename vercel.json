@@ -5,8 +5,7 @@
   "framework": "vue",
   "functions": {
     "api/**/*.js": {
-      "maxDuration": 30,
-      "includeFiles": "public/artworks/**"
+      "maxDuration": 30
     }
   },
   "rewrites": [

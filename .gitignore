@@ -30,3 +30,6 @@ coverage
 *.tsbuildinfo
 .vercel
 .env*.local
+
+# 构建时生成的作品清单
+public/artworks-manifest.json

@@ -37,45 +37,12 @@ export default async function handler(req, res) {
     // 获取查询参数
     const { category, page = 1, limit = 12, search, featured, sort = 'latest' } = req.query;
 
-    // 详细诊断日志
-    console.log('=== Artworks API Debug ===');
+    console.log('=== Artworks API ===');
     console.log('Environment:', process.env.VERCEL ? 'Vercel' : 'Local');
-    console.log('CWD:', process.cwd());
-    console.log('__dirname:', __dirname);
-
-    // 尝试多个可能的路径（适配 Vercel 部署环境）
-    const possiblePaths = [
-      path.join(process.cwd(), 'public', 'artworks'),        // 优先尝试标准路径
-      path.join(__dirname, '..', 'public', 'artworks'),      // 相对于 api 目录
-      path.join(process.cwd(), 'api', 'public', 'artworks'), // 备用路径
-    ];
-
-    let artworksPath = null;
-    let pathErrors = [];
-
-    for (const p of possiblePaths) {
-      try {
-        await fs.access(p);
-        artworksPath = p;
-        console.log('✅ Found artworks path:', p);
-
-        // 读取目录内容用于诊断
-        const contents = await fs.readdir(p);
-        console.log('Directory contents:', contents);
-        break;
-      } catch (e) {
-        pathErrors.push({ path: p, error: e.message });
-        console.log('❌ Path not accessible:', p, e.message);
-      }
-    }
-
-    if (!artworksPath) {
-      console.error('Failed to find artworks directory. Tried paths:', pathErrors);
-    }
 
     // 同时从两个源获取作品
     const [filesystemArtworks, blobArtworks] = await Promise.all([
-      artworksPath ? scanArtworksDirectory(artworksPath, baseUrl) : Promise.resolve([]),
+      loadManifestArtworks(baseUrl),
       fetchBlobArtworks()
     ]);
 
@@ -157,120 +124,48 @@ export default async function handler(req, res) {
   }
 }
 
-// 扫描作品目录
-async function scanArtworksDirectory(artworksDir, baseUrl = '') {
-  const artworks = [];
-
+// 从清单文件加载作品
+async function loadManifestArtworks(baseUrl = '') {
   try {
-    // 读取所有分类文件夹
-    const categories = await fs.readdir(artworksDir);
+    // 尝试多个可能的清单文件路径
+    const possiblePaths = [
+      path.join(process.cwd(), 'public', 'artworks-manifest.json'),
+      path.join(__dirname, '..', 'public', 'artworks-manifest.json'),
+      path.join(process.cwd(), 'artworks-manifest.json'),
+    ];
 
-    for (const category of categories) {
-      const categoryPath = path.join(artworksDir, category);
-      const stats = await fs.stat(categoryPath);
+    let manifestData = null;
 
-      if (!stats.isDirectory()) continue;
-
-      // 读取分类下的所有作品文件夹
-      const workFolders = await fs.readdir(categoryPath);
-
-      for (const workFolder of workFolders) {
-        const workPath = path.join(categoryPath, workFolder);
-        const workStats = await fs.stat(workPath);
-
-        if (!workStats.isDirectory()) continue;
-
-        // 扫描作品文件夹中的文件
-        const files = await fs.readdir(workPath);
-
-        // 查找图片 - 使用完整 URL
-        const images = files
-          .filter(f => f.match(/^image_\d+\.webp$/))
-          .sort((a, b) => {
-            const numA = parseInt(a.match(/\d+/)[0]);
-            const numB = parseInt(b.match(/\d+/)[0]);
-            return numA - numB;
-          })
-          .map(f => `${baseUrl}/artworks/${category}/${workFolder}/${f}`);
-
-        if (images.length === 0) continue; // 没有图片的文件夹跳过
-
-        // 查找作者头像 - 使用完整 URL
-        const authorAvatar = files.find(f => f === 'author.jpg')
-          ? `${baseUrl}/artworks/${category}/${workFolder}/author.jpg`
-          : null;
-
-        // 查找 Markdown 文件
-        const mdFile = files.find(f => f.endsWith('.md'));
-        let title = workFolder;
-        let description = '';
-        let isFeatured = false;
-
-        if (mdFile) {
-          try {
-            const mdPath = path.join(workPath, mdFile);
-            const mdContent = await fs.readFile(mdPath, 'utf-8');
-
-            // 解析 YAML front matter
-            const frontMatterMatch = mdContent.match(/^---\s*\n([\s\S]*?)\n---/);
-            if (frontMatterMatch) {
-              const frontMatter = frontMatterMatch[1];
-
-              // 提取标题
-              const titleMatch = frontMatter.match(/title:\s*(.+)/);
-              if (titleMatch) {
-                title = titleMatch[1].trim();
-              }
-
-              // 提取 featured 标记
-              const featuredMatch = frontMatter.match(/featured:\s*(true|false)/i);
-              if (featuredMatch && featuredMatch[1].toLowerCase() === 'true') {
-                isFeatured = true;
-              }
-            }
-
-            // 提取正文作为描述（去掉 front matter 后的第一段）
-            const contentWithoutFM = mdContent.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, '');
-            const firstParagraph = contentWithoutFM.trim().split('\n\n')[0];
-            description = firstParagraph.replace(/^#+\s*/, '').trim().substring(0, 200);
-          } catch (error) {
-            console.warn(`Failed to read markdown: ${mdFile}`, error);
-          }
-        }
-
-        // 检查是否有 .featured 文件
-        if (!isFeatured && files.includes('.featured')) {
-          isFeatured = true;
-        }
-
-        // 构造作品对象
-        const artwork = {
-          id: `${category}-${workFolder}`,
-          title: title || workFolder,
-          description: description || `这是一个${getCategoryLabel(category)}作品`,
-          category: category,
-          authorName: '作者',
-          authorEmail: 'author@example.com',
-          authorAvatar: authorAvatar,
-          images: images,
-          thumbnail: images[0],
-          createdAt: workStats.birthtime.toISOString(),
-          updatedAt: workStats.mtime.toISOString(),
-          featured: isFeatured,
-          status: 'published',
-          views: Math.floor(Math.random() * 10000) + 1000,
-          likes: Math.floor(Math.random() * 1000) + 100,
-          isFeatured: isFeatured
-        };
-
-        artworks.push(artwork);
+    for (const manifestPath of possiblePaths) {
+      try {
+        const content = await fs.readFile(manifestPath, 'utf-8');
+        manifestData = JSON.parse(content);
+        console.log('✅ Loaded manifest from:', manifestPath);
+        console.log('   Generated at:', manifestData.generatedAt);
+        break;
+      } catch (error) {
+        console.log('❌ Manifest not found at:', manifestPath);
       }
     }
-  } catch (error) {
-    console.error('Scan directory error:', error);
-  }
 
-  return artworks;
+    if (!manifestData || !manifestData.artworks) {
+      console.warn('⚠️  No manifest file found, returning empty array');
+      return [];
+    }
+
+    // 为所有路径添加 baseUrl 前缀
+    const artworks = manifestData.artworks.map(artwork => ({
+      ...artwork,
+      images: artwork.images?.map(img => `${baseUrl}${img}`) || [],
+      thumbnail: artwork.thumbnail ? `${baseUrl}${artwork.thumbnail}` : null,
+      authorAvatar: artwork.authorAvatar ? `${baseUrl}${artwork.authorAvatar}` : null,
+    }));
+
+    return artworks;
+  } catch (error) {
+    console.error('❌ Load manifest error:', error);
+    return [];
+  }
 }
 
 // 从 Vercel Blob 获取用户上传的作品
